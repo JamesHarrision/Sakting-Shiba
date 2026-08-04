@@ -1,6 +1,6 @@
 import type { Scene } from "@babylonjs/core/scene";
 import type { MaterialsRegistry } from "../../assets/MaterialsRegistry";
-import type { TransformNode } from "@babylonjs/core/Meshes/transformNode";
+import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 
@@ -18,7 +18,6 @@ export class ProceduralPlayer {
   private allMeshes: Mesh[] = [];
 
   constructor(scene: Scene, materials: MaterialsRegistry) {
-    const { TransformNode } = require("@babylonjs/core/Meshes/transformNode");
     this.root = new TransformNode("player-visual-root", scene);
 
     const matBody = materials.createMaterial("player.body", "#E87848");

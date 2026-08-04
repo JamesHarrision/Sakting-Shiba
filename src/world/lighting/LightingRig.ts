@@ -45,8 +45,9 @@ export class LightingRig {
 
     // Shadows for player only
     this.shadowGenerator = new ShadowGenerator(1024, this.directional);
-    this.shadowGenerator.useBlurExponentialShadowMap = true;
-    this.shadowGenerator.blurKernel = 32;
+    this.shadowGenerator.useBlurExponentialShadowMap = false;
+    this.shadowGenerator.usePercentageCloserFiltering = true;
+    this.shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_MEDIUM;
     this.shadowGenerator.bias = 0.0005;
     this.shadowGenerator.normalBias = 0.02;
     this.shadowGenerator.setDarkness(0.55);

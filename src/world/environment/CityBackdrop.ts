@@ -1,6 +1,6 @@
 import type { Scene } from "@babylonjs/core/scene";
 import type { MaterialsRegistry } from "../../assets/MaterialsRegistry";
-import type { TransformNode } from "@babylonjs/core/Meshes/transformNode";
+import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
@@ -31,7 +31,6 @@ export class CityBackdrop {
   ) {}
 
   build(parent: TransformNode): void {
-    const { TransformNode } = require("@babylonjs/core/Meshes/transformNode");
     this.backdropRoot = new TransformNode("city-backdrop-root", this.scene);
     this.backdropRoot.parent = parent;
 
