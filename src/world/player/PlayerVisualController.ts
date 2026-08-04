@@ -1,4 +1,5 @@
 import type { Scene } from "@babylonjs/core/scene";
+import type { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { MaterialsRegistry } from "../../assets/MaterialsRegistry";
 import type { PlayerVisualSnapshot } from "../../contracts/player-visual.contract";
 import { ProceduralPlayer } from "./ProceduralPlayer";
@@ -24,30 +25,37 @@ export class PlayerVisualController {
     positionY: 0,
     verticalVelocity: 0,
     state: "running",
-    horizontalDirection: 0
+    horizontalDirection: 0,
+    laneIndex: 1,
+    isGrounded: true,
+    isCrouching: false
   };
   private wasAirborne = false;
   private currentLean = 0;
   private currentTilt = 0;
   private squatScale = 1;
 
-  constructor(scene: Scene, materials: MaterialsRegistry) {
+  constructor(
+    scene: Scene,
+    materials: MaterialsRegistry,
+    gameplayRoot: TransformNode
+  ) {
     this.player = new ProceduralPlayer(scene, materials);
-    this.blobShadow = new PlayerBlobShadow(scene, this.player.root);
-    this.dustEffect = new LandingDustEffect(scene, this.player.root);
+    this.player.root.parent = gameplayRoot;
+    this.blobShadow = new PlayerBlobShadow(scene, gameplayRoot);
+    this.dustEffect = new LandingDustEffect(scene, gameplayRoot);
     this.player.root.position.set(0, 0, 0);
   }
 
   applySnapshot(snap: PlayerVisualSnapshot): void {
     this.state = snap;
-    this.player.root.position.x = snap.positionX;
-    this.player.root.position.y = snap.positionY;
     this.blobShadow.update(snap.positionY);
   }
 
   update(deltaSeconds: number): void {
     const dt = Math.min(deltaSeconds, 0.1);
     const s = this.state;
+    this.dustEffect.update(dt, s.positionY);
 
     switch (s.state) {
       case "running":
@@ -62,6 +70,8 @@ export class PlayerVisualController {
       case "crouching":
         this.animateCrouching(dt);
         break;
+      case "paused":
+        break;
       case "hit":
       case "dead":
         this.animateDead(dt);
@@ -73,7 +83,7 @@ export class PlayerVisualController {
     this.player.root.position.set(0, 0, 0);
     this.player.root.rotation.set(0, 0, 0);
     this.player.catBody.scaling.set(1, 1.3, 1);
-    this.player.boardDeck.rotation.set(0, 0, 0);
+    this.player.boardRoot.rotation.set(0, 0, 0);
     this.currentLean = 0;
     this.currentTilt = 0;
     this.squatScale = 1;
@@ -98,7 +108,7 @@ export class PlayerVisualController {
     const bob = Math.sin(this.currentBob) * RUN_BOB_AMOUNT;
     this.player.catBody.position.y = 0.85 + bob;
     this.player.catHead.position.y = 1.5 + bob;
-    this.player.boardDeck.rotation.x = Math.sin(this.currentBob * 1.5) * 0.015;
+    this.player.boardRoot.rotation.x = Math.sin(this.currentBob * 1.5) * 0.015;
 
     // Check for landing
     if (this.wasAirborne) {
@@ -108,6 +118,7 @@ export class PlayerVisualController {
   }
 
   private animateLaneSwitch(dt: number): void {
+    this.recoverPose(dt);
     const targetLean = this.state.horizontalDirection * LEAN_MAX_DEG;
     this.currentLean = this.smoothTo(this.currentLean, targetLean, LEAN_SPEED, dt);
     this.player.root.rotation.z = (this.currentLean * Math.PI) / 180;
@@ -116,6 +127,7 @@ export class PlayerVisualController {
 
   private animateJumping(dt: number): void {
     this.wasAirborne = true;
+    this.recoverBodyPosition(dt);
     // Recover lean
     this.currentLean = this.smoothTo(this.currentLean, 0, LEAN_SPEED, dt);
     this.player.root.rotation.z = (this.currentLean * Math.PI) / 180;
@@ -124,7 +136,7 @@ export class PlayerVisualController {
     const goingUp = this.state.verticalVelocity > 0;
     const targetTilt = goingUp ? -8 : 5;
     this.currentTilt = this.smoothTo(this.currentTilt, targetTilt, BOARD_TILT_SPEED, dt);
-    this.player.boardDeck.rotation.x = (this.currentTilt * Math.PI) / 180;
+    this.player.boardRoot.rotation.x = (this.currentTilt * Math.PI) / 180;
 
     // Slight compress on takeoff
     const compressTarget = goingUp ? 0.92 : 1.0;
@@ -135,9 +147,19 @@ export class PlayerVisualController {
   private animateCrouching(dt: number): void {
     this.squatScale = this.smoothTo(this.squatScale, 0.55, 10, dt);
     this.player.catBody.scaling.y = 1.3 * this.squatScale;
-    this.player.catBody.position.y = 0.55;
-    this.player.catHead.position.y = this.player.catBody.position.y + 0.42;
-    this.recoverToNeutral(dt);
+    this.player.catBody.position.y = this.smoothTo(
+      this.player.catBody.position.y,
+      0.55,
+      12,
+      dt
+    );
+    this.player.catHead.position.y = this.smoothTo(
+      this.player.catHead.position.y,
+      0.97,
+      12,
+      dt
+    );
+    this.recoverRotationToNeutral(dt);
   }
 
   private animateDead(dt: number): void {
@@ -153,18 +175,39 @@ export class PlayerVisualController {
   }
 
   private recoverToNeutral(dt: number): void {
-    // Recover lean
+    this.recoverRotationToNeutral(dt);
+    this.recoverPose(dt);
+  }
+
+  private recoverRotationToNeutral(dt: number): void {
     this.currentLean = this.smoothTo(this.currentLean, 0, LEAN_SPEED * 0.6, dt);
     this.player.root.rotation.z = (this.currentLean * Math.PI) / 180;
     this.player.root.rotation.y = this.smoothTo(this.player.root.rotation.y * 180 / Math.PI, 0, LEAN_SPEED * 0.4, dt) * Math.PI / 180;
 
     // Recover tilt
     this.currentTilt = this.smoothTo(this.currentTilt, 0, BOARD_TILT_SPEED * 0.7, dt);
-    this.player.boardDeck.rotation.x = (this.currentTilt * Math.PI) / 180;
+    this.player.boardRoot.rotation.x = (this.currentTilt * Math.PI) / 180;
+  }
 
-    // Recover squash
+  private recoverPose(dt: number): void {
     this.squatScale = this.smoothTo(this.squatScale, 1, SQUASH_RECOVER_SPEED, dt);
     this.player.catBody.scaling.y = 1.3 * this.squatScale;
+    this.recoverBodyPosition(dt);
+  }
+
+  private recoverBodyPosition(dt: number): void {
+    this.player.catBody.position.y = this.smoothTo(
+      this.player.catBody.position.y,
+      0.85,
+      SQUASH_RECOVER_SPEED,
+      dt
+    );
+    this.player.catHead.position.y = this.smoothTo(
+      this.player.catHead.position.y,
+      1.5,
+      SQUASH_RECOVER_SPEED,
+      dt
+    );
   }
 
   private smoothTo(current: number, target: number, speed: number, dt: number): number {

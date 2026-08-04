@@ -5,7 +5,7 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
 import type { CameraTargetSnapshot } from "../../contracts/player-visual.contract";
 
-function dampTowards(current: number, target: number, smoothing: number, deltaSeconds: number): number {
+export function dampTowards(current: number, target: number, smoothing: number, deltaSeconds: number): number {
   if (deltaSeconds <= 0) return current;
   const blend = 1 - Math.exp(-smoothing * deltaSeconds);
   return current + (target - current) * blend;

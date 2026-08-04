@@ -1,9 +1,8 @@
-import type { Scene } from "@babylonjs/core/scene";
 import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
 import type { PlayerVisualSnapshot } from "../../contracts/player-visual.contract";
 
 export class DebugHud {
-  private container!: HTMLDivElement;
+  private container?: HTMLDivElement;
   private enabled: boolean;
 
   constructor() {
@@ -34,16 +33,15 @@ export class DebugHud {
     document.body.appendChild(this.container);
   }
 
-  update(fps: number, snap: PlayerVisualSnapshot, activeMeshes: number, drawCalls: number): void {
+  update(fps: number, snap: PlayerVisualSnapshot, activeMeshes: number): void {
     if (!this.enabled || !this.container) return;
 
     this.container.innerHTML = [
       `FPS: ${fps.toFixed(0)}`,
-      `Lane: ${snap.positionX.toFixed(1)}`,
+      `Lane: ${snap.laneIndex}`,
       `State: ${snap.state}`,
       `Y: ${snap.positionY.toFixed(2)}`,
       `Meshes: ${activeMeshes}`,
-      `Draws: ${drawCalls}`,
     ].join("<br>");
   }
 
@@ -53,10 +51,12 @@ export class DebugHud {
       this.create();
     } else if (!this.enabled && this.container) {
       this.container.remove();
+      this.container = undefined;
     }
   }
 
   dispose(): void {
     this.container?.remove();
+    this.container = undefined;
   }
 }

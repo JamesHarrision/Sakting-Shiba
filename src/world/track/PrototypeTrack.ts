@@ -6,6 +6,7 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
+import { GAMEPLAY_CONFIG } from "../../config/gameplay/gameplayConfig";
 
 const CFG = WORLD_VISUAL_CONFIG;
 const HALF_TRACK = CFG.trackWidth / 2;
@@ -62,7 +63,10 @@ export class PrototypeTrack {
 
   private createLaneMarkers(): void {
     const matLane = this.materials.createMaterial("track.laneMarker", "#7A7880", 0.65);
-    const lanePositions = [-CFG.laneMarkerWidth * 8, CFG.laneMarkerWidth * 8];
+    const lanePositions = [
+      -GAMEPLAY_CONFIG.laneWidth / 2,
+      GAMEPLAY_CONFIG.laneWidth / 2
+    ];
     for (const lx of lanePositions) {
       const marker = MeshBuilder.CreateBox(
         "lane-marker", { width: CFG.laneMarkerWidth, height: 0.012, depth: L - 8 },

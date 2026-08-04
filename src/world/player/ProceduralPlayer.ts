@@ -6,6 +6,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 
 export class ProceduralPlayer {
   readonly root: TransformNode;
+  readonly boardRoot: TransformNode;
   readonly catBody: Mesh;
   readonly catHead: Mesh;
   readonly leftEar: Mesh;
@@ -14,11 +15,15 @@ export class ProceduralPlayer {
   readonly boardDeck: Mesh;
   readonly frontWheel: Mesh;
   readonly backWheel: Mesh;
+  readonly frontRightWheel: Mesh;
+  readonly backRightWheel: Mesh;
 
   private allMeshes: Mesh[] = [];
 
   constructor(scene: Scene, materials: MaterialsRegistry) {
     this.root = new TransformNode("player-visual-root", scene);
+    this.boardRoot = new TransformNode("board-visual-root", scene);
+    this.boardRoot.parent = this.root;
 
     const matBody = materials.createMaterial("player.body", "#E87848");
     const matHead = materials.createMaterial("player.head", "#E88858");
@@ -66,26 +71,44 @@ export class ProceduralPlayer {
     this.allMeshes.push(this.tail);
 
     // Skateboard deck
-    this.boardDeck = MeshBuilder.CreateBox("board-deck", { width: 1.5, height: 0.12, depth: 2.0 }, scene);
-    this.boardDeck.position.set(0, 0.16, 0);
+    this.boardDeck = MeshBuilder.CreateBox("board-deck", { width: 1.42, height: 0.08, depth: 1.72 }, scene);
+    this.boardDeck.position.set(0, 0.2, 0);
     this.boardDeck.material = matBoard;
-    this.boardDeck.parent = this.root;
+    this.boardDeck.parent = this.boardRoot;
     this.allMeshes.push(this.boardDeck);
 
-    // Wheels
-    this.frontWheel = MeshBuilder.CreateCylinder("board-wheel-F", { diameter: 0.18, height: 0.1, tessellation: 12 }, scene);
-    this.frontWheel.rotation.x = Math.PI / 2;
-    this.frontWheel.position.set(0, 0.06, 0.75);
-    this.frontWheel.material = matWheel;
-    this.frontWheel.parent = this.root;
-    this.allMeshes.push(this.frontWheel);
+    for (const [name, z, tilt] of [
+      ["board-nose", 0.98, -0.16],
+      ["board-tail", -0.98, 0.16]
+    ] as const) {
+      const tip = MeshBuilder.CreateBox(name, { width: 1.3, height: 0.07, depth: 0.32 }, scene);
+      tip.position.set(0, 0.23, z);
+      tip.rotation.x = tilt;
+      tip.material = matBoard;
+      tip.parent = this.boardRoot;
+      this.allMeshes.push(tip);
+    }
 
-    this.backWheel = MeshBuilder.CreateCylinder("board-wheel-B", { diameter: 0.18, height: 0.1, tessellation: 12 }, scene);
-    this.backWheel.rotation.x = Math.PI / 2;
-    this.backWheel.position.set(0, 0.06, -0.75);
-    this.backWheel.material = matWheel;
-    this.backWheel.parent = this.root;
-    this.allMeshes.push(this.backWheel);
+    this.frontWheel = this.createWheel(scene, matWheel, "board-wheel-FL", -0.56, 0.67);
+    this.backWheel = this.createWheel(scene, matWheel, "board-wheel-BL", -0.56, -0.67);
+    this.frontRightWheel = this.createWheel(scene, matWheel, "board-wheel-FR", 0.56, 0.67);
+    this.backRightWheel = this.createWheel(scene, matWheel, "board-wheel-BR", 0.56, -0.67);
+  }
+
+  private createWheel(
+    scene: Scene,
+    material: ReturnType<MaterialsRegistry["createMaterial"]>,
+    name: string,
+    x: number,
+    z: number
+  ): Mesh {
+    const wheel = MeshBuilder.CreateCylinder(name, { diameter: 0.2, height: 0.12, tessellation: 12 }, scene);
+    wheel.rotation.z = Math.PI / 2;
+    wheel.position.set(x, 0.1, z);
+    wheel.material = material;
+    wheel.parent = this.boardRoot;
+    this.allMeshes.push(wheel);
+    return wheel;
   }
 
   get meshes(): readonly Mesh[] {

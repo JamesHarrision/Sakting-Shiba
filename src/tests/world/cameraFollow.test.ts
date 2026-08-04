@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { dampTowards } from "../../world/cameraFollow";
+import { dampTowards } from "../../world/camera/RunnerCameraController";
 
 describe("dampTowards", () => {
   it("returns the same value when delta time is zero", () => {

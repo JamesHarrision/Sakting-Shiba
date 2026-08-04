@@ -1,12 +1,13 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
 
+import type { PlayerVisualSnapshot } from "./contracts/player-visual.contract";
 import { GameEventBus } from "./events/GameEventBus";
 import { GameClock } from "./gameplay/GameClock";
+import { PlayerController } from "./gameplay/PlayerController";
 import { RunStateStore } from "./gameplay/RunStateStore";
+import { KeyboardInputController } from "./input/KeyboardInputController";
 import { RunScene } from "./scenes/RunScene";
-import { LANE_X_POSITIONS } from "./config/gameplay/gameplayConfig";
-import type { PlayerVisualSnapshot } from "./contracts/player-visual.contract";
 import "./style.css";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
@@ -17,57 +18,116 @@ if (!canvas) {
 
 const engine = new Engine(canvas, true, {
   preserveDrawingBuffer: false,
-  stencil: true,
+  stencil: true
 });
-
 const eventBus = new GameEventBus();
 const clock = new GameClock();
 const runStateStore = new RunStateStore(eventBus);
+const playerController = new PlayerController(eventBus);
+const keyboardInput = new KeyboardInputController(window);
 const runScene = new RunScene();
+const scene = runScene.create(engine);
 
-// Bootstrap: create scene, then start run
-let scene: import("@babylonjs/core/scene").Scene;
+let playerVisualSnapshot = playerController.getVisualSnapshot();
+let isManualPaused = false;
+let isWindowFocused = document.hasFocus();
+let isDisposed = false;
 
-runScene.create(engine, eventBus).then((s) => {
-  scene = s;
-  runStateStore.startRun();
-});
+keyboardInput.attach();
+runStateStore.startRun();
+syncPauseState();
 
 engine.runRenderLoop(() => {
-  if (!scene) return;
+  const inputSnapshot = keyboardInput.getSnapshot();
+  const pauseWasToggled = inputSnapshot.pause;
+
+  if (pauseWasToggled) {
+    isManualPaused = !isManualPaused;
+    keyboardInput.reset();
+    syncPauseState();
+  }
 
   const deltaSeconds = clock.tick(engine.getDeltaTime());
 
-  if (deltaSeconds > 0) {
+  if (deltaSeconds > 0 && !pauseWasToggled) {
+    playerController.update(inputSnapshot, deltaSeconds);
+    playerVisualSnapshot = playerController.getVisualSnapshot();
+
     const state = runStateStore.getSnapshot();
     runStateStore.addDistance(state.speed * deltaSeconds);
   }
 
-  // Build player visual snapshot from gameplay state
-  // Player position: lane X + Y (0 = ground). Gameplay Agent will control positionX/Y via events.
-  // For now, use LANE_X_POSITIONS[1] as default center lane
-  const playerSnap: PlayerVisualSnapshot = {
-    positionX: LANE_X_POSITIONS[1],
-    positionY: 0,
-    verticalVelocity: 0,
-    state: "running",
-    horizontalDirection: 0,
-  };
+  const frameSnapshot: PlayerVisualSnapshot = clock.isPaused()
+    ? { ...playerVisualSnapshot, state: "paused" }
+    : playerVisualSnapshot;
 
-  runScene.update(Math.max(0, deltaSeconds), playerSnap);
+  runScene.update(deltaSeconds, frameSnapshot);
   scene.render();
 });
 
-window.addEventListener("resize", () => {
+function handleResize(): void {
   engine.resize();
-});
+}
 
-window.addEventListener("blur", () => {
-  clock.pause();
-  runStateStore.pauseRun();
-});
+function handleBlur(): void {
+  isWindowFocused = false;
+  keyboardInput.reset();
+  syncPauseState();
+}
 
-window.addEventListener("focus", () => {
-  clock.resume();
-  runStateStore.resumeRun();
-});
+function handleFocus(): void {
+  isWindowFocused = true;
+  syncPauseState();
+}
+
+function handleDebugToggle(event: KeyboardEvent): void {
+  if (event.code !== "F3") {
+    return;
+  }
+
+  event.preventDefault();
+  runScene.toggleDebugHud();
+}
+
+function syncPauseState(): void {
+  const shouldPause = isManualPaused || !isWindowFocused;
+
+  if (shouldPause === clock.isPaused()) {
+    return;
+  }
+
+  if (shouldPause) {
+    clock.pause();
+    runStateStore.pauseRun();
+  } else {
+    clock.resume();
+    runStateStore.resumeRun();
+  }
+}
+
+function disposeGame(): void {
+  if (isDisposed) {
+    return;
+  }
+
+  isDisposed = true;
+  window.removeEventListener("resize", handleResize);
+  window.removeEventListener("blur", handleBlur);
+  window.removeEventListener("focus", handleFocus);
+  window.removeEventListener("keydown", handleDebugToggle);
+  window.removeEventListener("beforeunload", disposeGame);
+  keyboardInput.detach();
+  engine.stopRenderLoop();
+  runScene.dispose();
+  engine.dispose();
+}
+
+window.addEventListener("resize", handleResize);
+window.addEventListener("blur", handleBlur);
+window.addEventListener("focus", handleFocus);
+window.addEventListener("keydown", handleDebugToggle);
+window.addEventListener("beforeunload", disposeGame);
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(disposeGame);
+}

@@ -1,4 +1,7 @@
 import type { Engine } from "@babylonjs/core/Engines/engine";
+import type { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
 import { MaterialsRegistry } from "../assets/MaterialsRegistry";
 import { WorldController } from "../world/WorldController";
@@ -6,22 +9,23 @@ import { RunnerCameraController } from "../world/camera/RunnerCameraController";
 import { PlayerVisualController } from "../world/player/PlayerVisualController";
 import { DebugHud } from "../ui/debug/DebugHud";
 import type { PlayerVisualSnapshot } from "../contracts/player-visual.contract";
-import type { GameEventBus } from "../events/GameEventBus";
 import { LANE_X_POSITIONS } from "../config/gameplay/gameplayConfig";
+import { WORLD_VISUAL_CONFIG } from "../config/visual/world-visual.config";
 
 export class RunScene {
   private scene!: Scene;
   private worldController!: WorldController;
   private cameraController!: RunnerCameraController;
   private playerVisual!: PlayerVisualController;
+  private playerRoot!: TransformNode;
+  private playerCollider!: Mesh;
   private debugHud!: DebugHud;
   private materials!: MaterialsRegistry;
   private fpsFrames = 0;
   private fpsTime = 0;
   private currentFps = 60;
-  private cleanups: (() => void)[] = [];
 
-  async create(engine: Engine, eventBus: GameEventBus): Promise<Scene> {
+  create(engine: Engine): Scene {
     this.scene = new Scene(engine);
     this.materials = new MaterialsRegistry(this.scene);
 
@@ -29,9 +33,29 @@ export class RunScene {
     this.worldController = new WorldController(this.scene, this.materials);
     this.worldController.build();
 
-    // Player visual
-    this.playerVisual = new PlayerVisualController(this.scene, this.materials);
-    this.playerVisual.player.root.parent = this.worldController.root;
+    this.playerRoot = new TransformNode("player-root", this.scene);
+    this.playerRoot.parent = this.worldController.root;
+    this.playerRoot.position.set(
+      LANE_X_POSITIONS[1],
+      WORLD_VISUAL_CONFIG.trackThickness,
+      0
+    );
+
+    this.playerCollider = MeshBuilder.CreateBox(
+      "player-collider",
+      { width: 0.9, height: 1.65, depth: 1.05 },
+      this.scene
+    );
+    this.playerCollider.parent = this.playerRoot;
+    this.playerCollider.position.y = 0.85;
+    this.playerCollider.isVisible = false;
+    this.playerCollider.isPickable = false;
+
+    this.playerVisual = new PlayerVisualController(
+      this.scene,
+      this.materials,
+      this.playerRoot
+    );
 
     // Camera
     this.cameraController = new RunnerCameraController(this.scene);
@@ -46,27 +70,17 @@ export class RunScene {
     // Debug HUD
     this.debugHud = new DebugHud();
 
-    // Listen to events from Gameplay Agent
-    this.cleanups.push(
-      eventBus.on("PLAYER_STATE_CHANGED", ({ from, to }) => {
-        // Visual state updates handled via snapshot in update()
-      }),
-      eventBus.on("LANE_CHANGED", ({ from, to }) => {
-        // Visual feedback via snapshot
-      }),
-      eventBus.on("PLAYER_JUMPED", () => {}),
-      eventBus.on("PLAYER_LANDED", () => {}),
-    );
-
     return this.scene;
   }
 
   update(deltaSeconds: number, playerSnap: PlayerVisualSnapshot): void {
-    // Update player visual
-    const prevLane = this.playerVisual.player.root.position.x;
-    if (playerSnap.positionX !== prevLane) {
-      playerSnap.horizontalDirection = playerSnap.positionX > prevLane ? 1 : playerSnap.positionX < prevLane ? -1 : 0;
-    }
+    this.playerRoot.position.x = playerSnap.positionX;
+    this.playerRoot.position.y =
+      WORLD_VISUAL_CONFIG.trackThickness + playerSnap.positionY;
+    const colliderScaleY = playerSnap.isCrouching ? 0.55 : 1;
+    this.playerCollider.scaling.y = colliderScaleY;
+    this.playerCollider.position.y = 0.85 * colliderScaleY;
+
     this.playerVisual.applySnapshot(playerSnap);
     this.playerVisual.update(deltaSeconds);
 
@@ -88,21 +102,28 @@ export class RunScene {
 
     // Debug HUD
     const activeMeshes = this.scene.meshes.filter(m => m.isEnabled()).length;
-    this.debugHud.update(this.currentFps, playerSnap, activeMeshes, 0);
+    this.debugHud.update(this.currentFps, playerSnap, activeMeshes);
   }
 
   reset(initialLaneX: number = LANE_X_POSITIONS[1]): void {
+    this.playerRoot.position.set(
+      initialLaneX,
+      WORLD_VISUAL_CONFIG.trackThickness,
+      0
+    );
     this.playerVisual.reset();
     this.cameraController.reset();
   }
 
+  toggleDebugHud(): void {
+    this.debugHud.toggle();
+  }
+
   dispose(): void {
-    for (const cleanup of this.cleanups) {
-      cleanup();
-    }
-    this.cleanups = [];
     this.debugHud.dispose();
     this.playerVisual.dispose();
+    this.playerCollider.dispose();
+    this.playerRoot.dispose();
     this.cameraController.dispose();
     this.worldController.dispose();
     this.materials.dispose();
