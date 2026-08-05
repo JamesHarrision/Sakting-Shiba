@@ -54,21 +54,133 @@ export interface PropAssetEntry {
  * - tree 4.1x7.5x5.0 (center)       -> scale 0.25, base at y=-4.55
  */
 export const PROP_ASSETS: readonly PropAssetEntry[] = [
-  { kind: "box", assetPath: `${PROPS_ASSET_DIR}/box.glb`, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 0.45 } },
-  { kind: "building", assetPath: `${PROPS_ASSET_DIR}/building.glb`, calibration: { position: { x: 0, y: 2.166, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 0.8 } },
-  { kind: "cone", assetPath: `${PROPS_ASSET_DIR}/cone.glb`, calibration: { position: { x: 0, y: 0.013, z: 0 }, rotationDegrees: { x: -90, y: 0, z: 0 }, scale: 0.3 } },
-  { kind: "dumpster", assetPath: `${PROPS_ASSET_DIR}/dumpster.glb`, calibration: { position: { x: 0, y: 0.525, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 0.45 } },
-  { kind: "fence", assetPath: `${PROPS_ASSET_DIR}/fence.glb`, calibration: { position: { x: 0, y: 0.238, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 0.025 } },
-  { kind: "lamp", assetPath: `${PROPS_ASSET_DIR}/lamp.glb`, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 0.05 } },
-  { kind: "plant", assetPath: `${PROPS_ASSET_DIR}/plant.glb`, calibration: { position: { x: 0, y: 0.2, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 0.2 } },
-  { kind: "tree", assetPath: `${PROPS_ASSET_DIR}/tree.glb`, calibration: { position: { x: 0, y: 1.14, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 0.25 } },
+  {
+    kind: "box",
+    assetPath: `${PROPS_ASSET_DIR}/box.glb`,
+    calibration: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: 0.45,
+    },
+  },
+  {
+    kind: "building",
+    assetPath: `${PROPS_ASSET_DIR}/building.glb`,
+    calibration: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0.5 },
+      scale: 0.6,
+    },
+  },
+  {
+    kind: "cone",
+    assetPath: `${PROPS_ASSET_DIR}/cone.glb`,
+    calibration: {
+      position: { x: 0, y: 0.013, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: 0.005,
+    },
+  },
+  {
+    kind: "dumpster",
+    assetPath: `${PROPS_ASSET_DIR}/dumpster.glb`,
+    calibration: {
+      position: { x: 0, y: 0.525, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: 0.45,
+    },
+  },
+  {
+    kind: "fence",
+    assetPath: `${PROPS_ASSET_DIR}/fence.glb`,
+    calibration: {
+      position: { x: 0, y: 0.238, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: 0.025,
+    },
+  },
+  {
+    kind: "lamp",
+    assetPath: `${PROPS_ASSET_DIR}/lamp.glb`,
+    calibration: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: 0.05,
+    },
+  },
+  {
+    kind: "plant",
+    assetPath: `${PROPS_ASSET_DIR}/plant.glb`,
+    calibration: {
+      position: { x: 0, y: 0.2, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: 0.2,
+    },
+  },
+  {
+    kind: "tree",
+    assetPath: `${PROPS_ASSET_DIR}/tree.glb`,
+    calibration: {
+      position: { x: 0, y: 1.14, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: 0.25,
+    },
+  },
   // Procedural-only rooftop staples (no asset yet)
-  { kind: "vent", assetPath: null, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 1 } },
-  { kind: "ac", assetPath: null, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 1 } },
-  { kind: "pipe", assetPath: null, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 1 } },
-  { kind: "antenna", assetPath: null, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 1 } },
-  { kind: "warningLight", assetPath: null, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 1 } },
-  { kind: "barrier", assetPath: null, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 1 } }
+  {
+    kind: "vent",
+    assetPath: null,
+    calibration: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: 1,
+    },
+  },
+  {
+    kind: "ac",
+    assetPath: null,
+    calibration: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: 1,
+    },
+  },
+  {
+    kind: "pipe",
+    assetPath: null,
+    calibration: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: 1,
+    },
+  },
+  {
+    kind: "antenna",
+    assetPath: null,
+    calibration: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: 1,
+    },
+  },
+  {
+    kind: "warningLight",
+    assetPath: null,
+    calibration: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: 1,
+    },
+  },
+  {
+    kind: "barrier",
+    assetPath: null,
+    calibration: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: 1,
+    },
+  },
 ];
 
 export function getPropEntry(kind: PropKind): PropAssetEntry {
