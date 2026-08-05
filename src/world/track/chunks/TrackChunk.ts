@@ -39,15 +39,12 @@ export function seededRandom(seed: number): () => number {
  */
 export abstract class TrackChunk {
   readonly root: TransformNode;
-  readonly spawnRoot: TransformNode;
 
   protected readonly meshes: Mesh[] = [];
   protected readonly chunkLength = CFG.trackChunkLength;
 
   constructor(protected readonly ctx: TrackChunkContext) {
     this.root = new TransformNode("track-chunk", ctx.scene);
-    this.spawnRoot = new TransformNode("track-chunk-spawn", ctx.scene);
-    this.spawnRoot.parent = this.root;
   }
 
   /** Builds the chunk meshes ONCE. seedOffset varies prop placement per chunk. */

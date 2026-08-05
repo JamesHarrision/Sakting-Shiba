@@ -112,7 +112,7 @@ export class RunScene {
     this.playerRig.reset();
     this.playerVisual.reset();
     this.cameraController.reset();
-    this.worldController.trackManager.reset();
+    this.worldController.reset();
   }
 
   getTrackManager(): TrackManager {

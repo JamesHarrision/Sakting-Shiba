@@ -15,38 +15,51 @@ import type { TrackChunk } from "./chunks/TrackChunk";
 
 const CFG = WORLD_VISUAL_CONFIG;
 
-interface ChunkSpawnEntry {
+interface ActiveSpawnItem {
   readonly pool: SpawnItemPool;
   readonly mesh: Mesh;
+  /** Local Z in scroll space (world Z at placement) */
+  readonly localZ: number;
+}
+
+export interface ChunkWorldRange {
+  readonly index: number;
+  readonly start: number;
+  readonly end: number;
 }
 
 /**
  * Manages the infinite track by recycling pooled chunks.
  *
- * - Chunks are created once and reused (no dispose/recreate per frame).
- * - The whole track scrolls toward -Z (toward the player/camera); the player
- *   never moves along Z — there is exactly one track movement system.
- * - A chunk is recycled to the front when it fully passes behind the camera.
- * - Debug spawn placeholders are pooled and live under chunk spawn roots,
- *   so they scroll with the track and are returned to the pool on recycle.
+ * Movement model:
+ * - `scrollDistance` grows with speed*dt; `trackRoot.z = -scrollDistance` moves
+ *   the whole track smoothly toward the player (the player never moves along Z).
+ * - Chunks recycle individually (local Z += totalLength) only when their far
+ *   edge has fully passed behind the camera — no whole-track jumps, so there is
+ *   no visible jolt and never a visible track end.
+ * - Debug spawn placeholders live in a scroll-space container (spawnRoot) so
+ *   they scroll with the world and recycle independently of chunks.
  */
 export class TrackManager {
   readonly root: TransformNode;
+  /** Scroll-space container for pooled debug spawn placeholders */
+  readonly spawnRoot: TransformNode;
 
   private readonly trackRoot: TransformNode;
   private readonly chunks: TrackChunk[] = [];
-  private readonly chunkSpawns = new Map<TrackChunk, ChunkSpawnEntry[]>();
   private readonly obstaclePool: SpawnItemPool;
   private readonly pickupPool: SpawnItemPool;
+  private readonly activeItems: ActiveSpawnItem[] = [];
 
   private readonly chunkLength = CFG.trackChunkLength;
   private readonly chunkCount = CFG.trackChunkCount;
   private readonly totalLength = CFG.trackChunkLength * CFG.trackChunkCount;
+  private readonly recycleBehindZ = -CFG.trackChunkLength;
 
+  private scrollDistance = 0;
   private paused = false;
   private lastSpeed: number = GAMEPLAY_CONFIG.initialSpeed;
   private poolExhaustedWarned = false;
-  private outOfWindowWarned = false;
   private readonly reusePosition = new Vector3();
 
   constructor(
@@ -56,6 +69,8 @@ export class TrackManager {
     this.root = new TransformNode("track-manager", scene);
     this.trackRoot = new TransformNode("track-scroll-root", scene);
     this.trackRoot.parent = this.root;
+    this.spawnRoot = new TransformNode("track-spawn-root", scene);
+    this.spawnRoot.parent = this.trackRoot;
 
     const obstacleMat = materials.createMaterial(
       "spawn.obstacle",
@@ -96,10 +111,9 @@ export class TrackManager {
       const chunk = new ctor({ scene: this.scene, materials: this.materials });
       chunk.build(i);
       chunk.root.parent = this.trackRoot;
-      // Initial slots cover [-chunkLength, (chunkCount-1) * chunkLength]
+      // Initial locals cover [-chunkLength, (chunkCount-1) * chunkLength]
       chunk.root.position.z = (i - 1) * this.chunkLength;
       this.chunks.push(chunk);
-      this.chunkSpawns.set(chunk, []);
     }
   }
 
@@ -109,49 +123,30 @@ export class TrackManager {
     }
 
     this.lastSpeed = speed;
-    this.trackRoot.position.z -= speed * deltaSeconds;
+    this.scrollDistance += speed * deltaSeconds;
+    this.trackRoot.position.z = -this.scrollDistance;
 
-    // Wrap whole chunks that fully passed behind the camera
-    while (this.trackRoot.position.z <= -this.chunkLength) {
-      this.trackRoot.position.z += this.chunkLength;
-      this.recycleBackChunk();
-    }
+    this.recycleChunks();
+    this.recycleSpawnItems();
+  }
+
+  getScrollDistance(): number {
+    return this.scrollDistance;
   }
 
   /** Renders world-space spawn requests as pooled debug placeholders. */
   submitSpawnRequests(requests: readonly SpawnRequest[]): void {
-    const coverageStart =
-      this.chunks[0].root.position.z + this.trackRoot.position.z;
-
     for (const request of requests) {
       for (const row of request.rows) {
         const worldZ = request.startZ + row.offsetZ;
-        const offsetFromCoverageStart = worldZ - coverageStart;
-        const slot = Math.floor(offsetFromCoverageStart / this.chunkLength);
-
-        if (slot < 0 || slot >= this.chunkCount) {
-          if (!this.outOfWindowWarned) {
-            console.warn(
-              `[TrackManager] SpawnRequest "${request.patternId}" at Z=${worldZ.toFixed(1)} ` +
-                `is outside the active track window; skipped.`
-            );
-            this.outOfWindowWarned = true;
-          }
-          continue;
-        }
-
-        const chunk = this.chunks[slot];
-        const localZ =
-          worldZ - (chunk.root.position.z + this.trackRoot.position.z);
-
         row.lanes.forEach((item, lane) => {
           if (!item) {
             return;
           }
           if (item.type === "obstacle") {
-            this.placeObstacle(chunk, lane, localZ);
+            this.placeObstacle(lane, worldZ);
           } else if (item.type === "pickup") {
-            this.placePickup(chunk, lane, localZ);
+            this.placePickup(lane, worldZ);
           }
           // ramp/rail/other kinds are not rendered by the M3 placeholder policy
         });
@@ -161,17 +156,15 @@ export class TrackManager {
 
   reset(): void {
     this.paused = false;
+    this.scrollDistance = 0;
     this.trackRoot.position.z = 0;
-
-    // Return every spawn item to its pool and restore initial slots
+    this.releaseAllSpawnItems();
     for (const chunk of this.chunks) {
-      this.releaseChunkSpawns(chunk);
       chunk.root.position.z =
         (this.chunks.indexOf(chunk) - 1) * this.chunkLength;
     }
     this.lastSpeed = GAMEPLAY_CONFIG.initialSpeed;
     this.poolExhaustedWarned = false;
-    this.outOfWindowWarned = false;
   }
 
   pause(): void {
@@ -182,23 +175,40 @@ export class TrackManager {
     this.paused = false;
   }
 
+  /** Chunk world ranges (sorted by start). Used by debug + tests. */
+  getChunkWorldRanges(): ChunkWorldRange[] {
+    const ranges = this.chunks.map((chunk, index) => ({
+      index,
+      start: chunk.root.position.z + this.trackRoot.position.z,
+      end:
+        chunk.root.position.z +
+        this.trackRoot.position.z +
+        this.chunkLength
+    }));
+    ranges.sort((a, b) => a.start - b.start);
+    return ranges;
+  }
+
   getDebugStats(): TrackDebugStats {
-    const last = this.chunks[this.chunks.length - 1];
+    let furthestEnd = 0;
+    for (const chunk of this.chunks) {
+      furthestEnd = Math.max(
+        furthestEnd,
+        chunk.root.position.z + this.trackRoot.position.z + this.chunkLength
+      );
+    }
     return {
       activeChunks: this.chunks.length,
       pooledChunks: 0,
       activeObstacles: this.obstaclePool.activeCount,
       activePickups: this.pickupPool.activeCount,
       speed: this.lastSpeed,
-      furthestChunkZ:
-        last.root.position.z + this.trackRoot.position.z + this.chunkLength
+      furthestChunkZ: furthestEnd
     };
   }
 
   dispose(): void {
-    for (const chunk of this.chunks) {
-      this.releaseChunkSpawns(chunk);
-    }
+    this.releaseAllSpawnItems();
     this.obstaclePool.dispose();
     this.pickupPool.dispose();
     for (const chunk of this.chunks) {
@@ -211,58 +221,64 @@ export class TrackManager {
 
   // ── private ─────────────────────────────────────────────────
 
-  private recycleBackChunk(): void {
-    const back = this.chunks.shift();
-    if (!back) {
-      return;
+  private recycleChunks(): void {
+    for (const chunk of this.chunks) {
+      const worldEnd =
+        chunk.root.position.z + this.chunkLength + this.trackRoot.position.z;
+      if (worldEnd < this.recycleBehindZ) {
+        chunk.root.position.z += this.totalLength;
+      }
     }
-    // Items in the back chunk have already been passed — return them to pool
-    this.releaseChunkSpawns(back);
-    back.root.position.z += this.totalLength;
-    this.chunks.push(back);
   }
 
-  private placeObstacle(chunk: TrackChunk, lane: number, localZ: number): void {
+  private recycleSpawnItems(): void {
+    for (let i = this.activeItems.length - 1; i >= 0; i--) {
+      const entry = this.activeItems[i];
+      const worldZ = entry.localZ + this.trackRoot.position.z;
+      if (worldZ < this.recycleBehindZ) {
+        entry.pool.release(entry.mesh);
+        this.activeItems.splice(i, 1);
+      }
+    }
+  }
+
+  private placeObstacle(lane: number, worldZ: number): void {
     const mesh = this.obstaclePool.acquire(
-      chunk.spawnRoot,
+      this.spawnRoot,
       this.reusePosition.set(
         LANE_X_POSITIONS[lane as keyof typeof LANE_X_POSITIONS],
         CFG.trackThickness + 0.9,
-        localZ
+        worldZ
       )
     );
     if (!mesh) {
       this.warnPoolExhausted("obstacle");
       return;
     }
-    this.chunkSpawns.get(chunk)?.push({ pool: this.obstaclePool, mesh });
+    this.activeItems.push({ pool: this.obstaclePool, mesh, localZ: worldZ });
   }
 
-  private placePickup(chunk: TrackChunk, lane: number, localZ: number): void {
+  private placePickup(lane: number, worldZ: number): void {
     const mesh = this.pickupPool.acquire(
-      chunk.spawnRoot,
+      this.spawnRoot,
       this.reusePosition.set(
         LANE_X_POSITIONS[lane as keyof typeof LANE_X_POSITIONS],
         CFG.trackThickness + 0.4,
-        localZ
+        worldZ
       )
     );
     if (!mesh) {
       this.warnPoolExhausted("pickup");
       return;
     }
-    this.chunkSpawns.get(chunk)?.push({ pool: this.pickupPool, mesh });
+    this.activeItems.push({ pool: this.pickupPool, mesh, localZ: worldZ });
   }
 
-  private releaseChunkSpawns(chunk: TrackChunk): void {
-    const entries = this.chunkSpawns.get(chunk);
-    if (!entries) {
-      return;
-    }
-    for (const entry of entries) {
+  private releaseAllSpawnItems(): void {
+    for (const entry of this.activeItems) {
       entry.pool.release(entry.mesh);
     }
-    entries.length = 0;
+    this.activeItems.length = 0;
   }
 
   private warnPoolExhausted(kind: string): void {

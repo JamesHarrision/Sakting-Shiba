@@ -43,7 +43,7 @@ export const WORLD_VISUAL_CONFIG: WorldVisualConfig = {
   rooftopEdgeHalfWidth: 1.4,
   guardRailHeight: 0.35,
   trackChunkLength: 32,
-  trackChunkCount: 5,
+  trackChunkCount: 6,
   spawnObstacleColor: "#D05545",
   spawnPickupColor: "#E8B048",
   cameraHeight: 5.6,

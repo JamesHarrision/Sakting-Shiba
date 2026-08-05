@@ -8,6 +8,7 @@ import { LANE_X_POSITIONS } from "../../config/gameplay/gameplayConfig";
 import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
 import type { SpawnItem } from "../../contracts/gameplay";
 import type { SpawnRequest } from "../../contracts/track.contract";
+import { SpawnPlaceholderFeeder } from "../../world/track/SpawnPlaceholderFeeder";
 import { TrackManager } from "../../world/track/TrackManager";
 
 const OBSTACLE: SpawnItem = { type: "obstacle", assetId: "obstacle.box" };
@@ -104,7 +105,7 @@ describe("TrackManager", () => {
     dispose();
   });
 
-  it("ignores spawn requests outside the active track window", () => {
+  it("places spawn requests at any future Z and recycles them after scrolling past", () => {
     const { manager, dispose } = createFixture();
 
     manager.submitSpawnRequests([
@@ -115,7 +116,53 @@ describe("TrackManager", () => {
       }
     ]);
 
+    expect(manager.getDebugStats().activeObstacles).toBe(1);
+
+    // Scroll past the far item (4000) -> returned to the pool
+    for (let i = 0; i < 220; i += 1) {
+      manager.update(1, 20);
+    }
     expect(manager.getDebugStats().activeObstacles).toBe(0);
+    dispose();
+  });
+
+  it("keeps the track continuous with no gaps and no forward jolts", () => {
+    const { manager, dispose } = createFixture();
+
+    // Per-chunk world ranges from the previous frame (index is stable)
+    const prevStart = new Map<number, number>();
+    const prevEnd = new Map<number, number>();
+
+    for (let frame = 0; frame < 800; frame += 1) {
+      manager.update(0.016, 20);
+
+      const ranges = manager.getChunkWorldRanges();
+      expect(ranges).toHaveLength(WORLD_VISUAL_CONFIG.trackChunkCount);
+
+      // No gaps: adjacent chunks butt-join
+      for (let i = 1; i < ranges.length; i += 1) {
+        expect(ranges[i].start).toBeCloseTo(ranges[i - 1].end, 2);
+      }
+
+      // The player position (world Z 0) is always covered
+      expect(ranges.some((r) => r.start <= 0 && r.end >= 0)).toBe(true);
+
+      // No forward end visible: track extends past the fog zone
+      const furthestEnd = Math.max(...ranges.map((r) => r.end));
+      expect(furthestEnd).toBeGreaterThan(110);
+
+      // A chunk may only jump forward (recycle) when it was fully behind
+      // the camera in the previous frame — this catches whole-track jolts.
+      for (const r of ranges) {
+        const lastStart = prevStart.get(r.index);
+        const lastEnd = prevEnd.get(r.index);
+        if (lastStart !== undefined && r.start > lastStart + 1e-3) {
+          expect(lastEnd).toBeLessThan(-WORLD_VISUAL_CONFIG.cameraDistance);
+        }
+        prevStart.set(r.index, r.start);
+        prevEnd.set(r.index, r.end);
+      }
+    }
     dispose();
   });
 
@@ -163,6 +210,36 @@ describe("TrackManager", () => {
     expect(manager.getDebugStats().furthestChunkZ).toBeLessThan(
       statsBeforePause.furthestChunkZ
     );
+    dispose();
+  });
+
+  it("placeholder feeder submits spawn requests as the track scrolls and resets", () => {
+    const { manager, dispose } = createFixture();
+    const feeder = new SpawnPlaceholderFeeder(manager);
+
+    // Before the first interval: nothing
+    expect(manager.getDebugStats().activeObstacles).toBe(0);
+    expect(manager.getDebugStats().activePickups).toBe(0);
+
+    // Scroll past the first spawn interval (40 units)
+    for (let i = 0; i < 10; i += 1) {
+      manager.update(0.5, 10);
+    }
+    feeder.update();
+    expect(
+      manager.getDebugStats().activeObstacles +
+        manager.getDebugStats().activePickups
+    ).toBeGreaterThan(0);
+
+    // Items are placed ahead of the player (world Z > 0) and scroll in
+    const stats = manager.getDebugStats();
+    expect(stats.activeObstacles).toBeGreaterThan(0);
+
+    // Reset clears everything and the feeder restarts
+    manager.reset();
+    feeder.reset();
+    expect(manager.getDebugStats().activeObstacles).toBe(0);
+    expect(manager.getDebugStats().activePickups).toBe(0);
     dispose();
   });
 });
