@@ -56,7 +56,7 @@ export const PLAYER_MODEL_CONFIG: PlayerModelVisualConfig = {
   skateboard: {
     position: { x: 0, y: 0, z: 0 },
     rotationDegrees: { x: 0, y: 90, z: 0 },
-    scale: 3.0,
+    scale: 5.0,
   },
 
   // catSeatHeight = boardDeckHeight + catFootOffset
