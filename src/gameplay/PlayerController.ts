@@ -8,6 +8,7 @@ import type {
   PlayerState
 } from "../contracts/gameplay";
 import type { PlayerVisualSnapshot } from "../contracts/player-visual.contract";
+import type { PlayerCameraTargetSnapshot } from "../contracts/player-camera-target.contract";
 import { GameEventBus } from "../events/GameEventBus";
 
 export interface PlayerControllerSnapshot {
@@ -19,6 +20,7 @@ export interface PlayerControllerSnapshot {
   isCrouching: boolean;
   isSwitchingLane: boolean;
   verticalVelocity: number;
+  crouchProgress: number;
 }
 
 export interface PlayerControllerOptions {
@@ -78,7 +80,11 @@ export class PlayerController {
       isGrounded: this.isGrounded(),
       isCrouching: this.isCrouching(),
       isSwitchingLane: this.isSwitchingLane(),
-      verticalVelocity: this.verticalVelocity
+      verticalVelocity: this.verticalVelocity,
+      crouchProgress: Math.min(
+        1,
+        this.crouchTimeRemaining / GAMEPLAY_CONFIG.crouchDuration
+      )
     };
   }
 
@@ -86,7 +92,7 @@ export class PlayerController {
     const snapshot = this.getSnapshot();
     const targetX = LANE_X_POSITIONS[snapshot.lane];
 
-    return {
+    return Object.freeze({
       laneIndex: snapshot.lane,
       positionX: snapshot.x,
       positionY: snapshot.y,
@@ -96,8 +102,22 @@ export class PlayerController {
         ? Math.sign(targetX - snapshot.x) as -1 | 1
         : 0,
       isGrounded: snapshot.isGrounded,
-      isCrouching: snapshot.isCrouching
-    };
+      isCrouching: snapshot.isCrouching,
+      crouchProgress: snapshot.crouchProgress
+    });
+  }
+
+  getCameraTargetSnapshot(
+    isPaused = false
+  ): Readonly<PlayerCameraTargetSnapshot> {
+    const snapshot = this.getSnapshot();
+
+    return Object.freeze({
+      targetX: snapshot.x,
+      targetY: snapshot.y,
+      targetZ: 0,
+      isPaused
+    });
   }
 
   private handleLaneInput(input: InputSnapshot): void {

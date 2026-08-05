@@ -28,7 +28,8 @@ export class PlayerVisualController {
     horizontalDirection: 0,
     laneIndex: 1,
     isGrounded: true,
-    isCrouching: false
+    isCrouching: false,
+    crouchProgress: 0
   };
   private wasAirborne = false;
   private currentLean = 0;

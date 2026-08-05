@@ -4,21 +4,23 @@ export type PlayerVisualState = PlayerState | "paused";
 
 export interface PlayerVisualSnapshot {
   /** Logical lane selected by gameplay */
-  laneIndex: LaneIndex;
+  readonly laneIndex: LaneIndex;
   /** World X position (lane position) */
-  positionX: number;
+  readonly positionX: number;
   /** World Y position (jump height) */
-  positionY: number;
+  readonly positionY: number;
   /** Current vertical velocity (for jump arc awareness) */
-  verticalVelocity: number;
+  readonly verticalVelocity: number;
   /** Current player state */
-  state: PlayerVisualState;
+  readonly state: PlayerVisualState;
   /** Horizontal movement direction: -1 left, 0 center, 1 right */
-  horizontalDirection: -1 | 0 | 1;
+  readonly horizontalDirection: -1 | 0 | 1;
   /** Whether gameplay considers the player grounded */
-  isGrounded: boolean;
+  readonly isGrounded: boolean;
   /** Whether the crouch collider and pose should be active */
-  isCrouching: boolean;
+  readonly isCrouching: boolean;
+  /** Normalized remaining crouch state, from 0 to 1 */
+  readonly crouchProgress: number;
 }
 
 export interface CameraTargetSnapshot {
