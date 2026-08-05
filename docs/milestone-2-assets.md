@@ -55,9 +55,12 @@ Notes: length is along X, so the board is rotated +90° around Y to run along th
 
 ## Calibration (see src/config/visual/player-model.config.ts)
 
-- skateboard: `rotationDegrees.y = 90`, `scale = 2.2`, `position.y = 0` (wheels on ground)
-  - Resulting size: length ~1.67, width ~0.43, deck top ~0.24 above ground
-- cat: `scale = 0.66`, `rotationDegrees.y = 0` (faces +Z), `position.y = 0.895`
+Model reference dimensions (world bbox, scale = 1): cat 2.25 x 2.49 x 1.87 (feet at Y -0.995); board 0.76 (length along X) x 0.19 (width) x 0.11 (height, ground at Y 0).
+
+- skateboard: `rotationDegrees.y = 90`, `scale = 3.0`, `position.y = 0` (wheels on ground)
+  - Resulting size: length ~2.28, width ~0.58, deck top ~0.32 above ground
+  - Board extends ~0.5 beyond the dog's body each end; dog's feet stay centered on the deck
+- cat: `scale = 0.66`, `rotationDegrees.y = 0` (faces +Z), `position.y = 0.981`
   - Resulting height ~1.64; feet rest on the board deck (`catSeatHeight = boardDeckHeight + catFootOffset`)
 - Crouch uses foot-locked squash so feet stay on the deck (`boardDeckHeight + catFootOffset * crouchScaleY`).
 

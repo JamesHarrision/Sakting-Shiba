@@ -36,27 +36,33 @@ export interface PlayerModelVisualConfig {
 }
 
 /**
- * Calibration values computed from the real assets (see docs/milestone-2-assets.md):
- * - cat.glb:  world bbox 2.25 x 2.49 x 1.87, feet at Y -0.995, stands upright (Y is tallest)
- * - skateboard.glb: world bbox 0.76 x 0.11 x 0.19, length along X (needs +90deg Y rotation),
- *                   ground already at Y 0
+ * Calibration values computed from the real assets (see docs/milestone-2-assets.md).
+ * Model reference dimensions (world bbox, scale = 1):
+ * - cat.glb:         2.25 (X) x 2.49 (Y) x 1.87 (Z), feet at Y -0.995, stands upright
+ * - skateboard.glb:  0.76 (length, along X) x 0.19 (width) x 0.11 (height), ground at Y 0
+ *
+ * Derived values at chosen scales:
+ * - cat scale 0.66 -> footprint 1.49 (X) x 1.24 (Z), height 1.64
+ * - board scale 3.0 -> length 2.28, width 0.58, deck top 0.324
+ *   (board extends ~0.5 beyond the dog's body each end; dog feet stay centered on deck)
+ * - catSeatHeight = boardDeckHeight + catFootOffset (keeps feet resting on the deck)
  */
 export const PLAYER_MODEL_CONFIG: PlayerModelVisualConfig = {
   cat: {
-    position: { x: 0, y: 0.895, z: 0 },
+    position: { x: 0, y: 0.981, z: 0 },
     rotationDegrees: { x: 0, y: 0, z: 0 },
     scale: 0.66,
   },
   skateboard: {
     position: { x: 0, y: 0, z: 0 },
     rotationDegrees: { x: 0, y: 90, z: 0 },
-    scale: 2.2,
+    scale: 5.0,
   },
 
   // catSeatHeight = boardDeckHeight + catFootOffset
-  catSeatHeight: 0.895,
+  catSeatHeight: 0.981,
   catFootOffset: 0.657,
-  boardDeckHeight: 0.238,
+  boardDeckHeight: 0.324,
   boardGroundClearance: 0,
   cameraVisualOffsetY: 0.15,
 
