@@ -57,6 +57,10 @@ export class KeyboardInputController {
   detach(): void {
     this.target?.removeEventListener("keydown", this.keydownHandler);
     this.target?.removeEventListener("keyup", this.keyupHandler);
+    this.reset();
+  }
+
+  reset(): void {
     this.pressedKeys.clear();
     this.pendingActions.clear();
   }

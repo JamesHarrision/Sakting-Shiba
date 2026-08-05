@@ -96,4 +96,39 @@ describe("PlayerController", () => {
       state: "running"
     });
   });
+
+  it("keeps jump and crouch mutually exclusive", () => {
+    const controller = new PlayerController(new GameEventBus());
+
+    controller.update({ ...createEmptyInputSnapshot(), crouch: true }, 0.01);
+    controller.update({ ...createEmptyInputSnapshot(), jump: true }, 0.01);
+
+    expect(controller.getSnapshot()).toMatchObject({
+      state: "crouching",
+      y: 0,
+      verticalVelocity: 0
+    });
+
+    controller.reset();
+    controller.update({ ...createEmptyInputSnapshot(), jump: true }, 0.01);
+    controller.update({ ...createEmptyInputSnapshot(), crouch: true }, 0.01);
+
+    expect(controller.getSnapshot()).toMatchObject({
+      state: "jumping",
+      isCrouching: false
+    });
+  });
+
+  it("exposes a read-only visual snapshot with lane direction", () => {
+    const controller = new PlayerController(new GameEventBus());
+
+    controller.update({ ...createEmptyInputSnapshot(), moveRight: true }, 0.01);
+
+    expect(controller.getVisualSnapshot()).toMatchObject({
+      laneIndex: 2,
+      state: "switching_lane",
+      horizontalDirection: 1,
+      isGrounded: true
+    });
+  });
 });

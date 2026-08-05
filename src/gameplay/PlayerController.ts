@@ -7,6 +7,7 @@ import type {
   LaneIndex,
   PlayerState
 } from "../contracts/gameplay";
+import type { PlayerVisualSnapshot } from "../contracts/player-visual.contract";
 import { GameEventBus } from "../events/GameEventBus";
 
 export interface PlayerControllerSnapshot {
@@ -81,6 +82,24 @@ export class PlayerController {
     };
   }
 
+  getVisualSnapshot(): PlayerVisualSnapshot {
+    const snapshot = this.getSnapshot();
+    const targetX = LANE_X_POSITIONS[snapshot.lane];
+
+    return {
+      laneIndex: snapshot.lane,
+      positionX: snapshot.x,
+      positionY: snapshot.y,
+      verticalVelocity: snapshot.verticalVelocity,
+      state: snapshot.state,
+      horizontalDirection: snapshot.isSwitchingLane
+        ? Math.sign(targetX - snapshot.x) as -1 | 1
+        : 0,
+      isGrounded: snapshot.isGrounded,
+      isCrouching: snapshot.isCrouching
+    };
+  }
+
   private handleLaneInput(input: InputSnapshot): void {
     if (this.isSwitchingLane() || input.moveLeft === input.moveRight) {
       return;
@@ -105,11 +124,10 @@ export class PlayerController {
   }
 
   private handleJumpInput(input: InputSnapshot): void {
-    if (!input.jump || !this.isGrounded()) {
+    if (!input.jump || !this.isGrounded() || this.isCrouching()) {
       return;
     }
 
-    this.crouchTimeRemaining = 0;
     this.verticalVelocity = Math.sqrt(
       2 * Math.abs(GAMEPLAY_CONFIG.gravity) * GAMEPLAY_CONFIG.jumpHeight
     );
@@ -120,7 +138,11 @@ export class PlayerController {
   }
 
   private handleCrouchInput(input: InputSnapshot): void {
-    if (!input.crouch || !this.isGrounded()) {
+    if (
+      !input.crouch ||
+      !this.isGrounded() ||
+      this.verticalVelocity !== 0
+    ) {
       return;
     }
 

@@ -43,4 +43,17 @@ describe("KeyboardInputController", () => {
       pause: true
     });
   });
+
+  it("clears held and pending input when reset", () => {
+    const input = new KeyboardInputController();
+
+    input.handleKeyDown("ArrowDown");
+    input.handleKeyDown("Space");
+    input.reset();
+
+    expect(input.getSnapshot()).toMatchObject({
+      crouch: false,
+      jump: false
+    });
+  });
 });

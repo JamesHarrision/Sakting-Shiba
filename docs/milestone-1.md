@@ -1,8 +1,8 @@
 # Milestone 1 - Whitebox Gameplay
 
-## Person 1 Scope
+## Integrated Scope
 
-This branch implements the gameplay/core half of Milestone 1:
+This branch combines the gameplay/core and polished whitebox world halves of Milestone 1:
 
 - Three-lane player controller.
 - Smooth lane switching using delta time.
@@ -12,6 +12,10 @@ This branch implements the gameplay/core half of Milestone 1:
 - Keyboard input abstraction for desktop controls.
 - Gameplay events for lane change, jump, landing, and state transitions.
 - Unit tests for controller and keyboard input behavior.
+- Rooftop track, city backdrop, runner camera, lighting, and fog.
+- Procedural cat and skateboard placeholder with visual state animation.
+- A snapshot-only boundary between gameplay and player visuals.
+- A single render loop and player transform owner.
 
 ## Controls
 
@@ -22,6 +26,7 @@ Desktop:
 - `W`, `ArrowUp`, or `Space`: jump.
 - `S` or `ArrowDown`: crouch.
 - `P` or `Escape`: pause.
+- `F3`: toggle the debug HUD.
 
 ## Test Checklist
 
@@ -38,3 +43,6 @@ Manual smoke test:
 - Crouch and return to running.
 - Hold a lane key and confirm it only moves one lane per press.
 - Pause with `P` or `Escape`, then resume.
+- Leave the window and return; gameplay should remain stable without buffered input.
+- Toggle the debug HUD with `F3`.
+- Confirm the browser console remains free of errors while playing.

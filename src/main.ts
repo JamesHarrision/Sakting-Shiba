@@ -1,14 +1,13 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
-import type { FreeCamera } from "@babylonjs/core/Cameras/freeCamera";
-import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
-import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
 
+import type { PlayerVisualSnapshot } from "./contracts/player-visual.contract";
 import { GameEventBus } from "./events/GameEventBus";
 import { GameClock } from "./gameplay/GameClock";
 import { PlayerController } from "./gameplay/PlayerController";
 import { RunStateStore } from "./gameplay/RunStateStore";
 import { KeyboardInputController } from "./input/KeyboardInputController";
-import { createWorldScene } from "./world/createWorldScene";
+import { RunScene } from "./scenes/RunScene";
 import "./style.css";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
@@ -21,92 +20,73 @@ const engine = new Engine(canvas, true, {
   preserveDrawingBuffer: false,
   stencil: true
 });
-
 const eventBus = new GameEventBus();
 const clock = new GameClock();
 const runStateStore = new RunStateStore(eventBus);
 const playerController = new PlayerController(eventBus);
 const keyboardInput = new KeyboardInputController(window);
-const scene = createWorldScene(engine);
-const playerCube = scene.getMeshByName("m0-player-debug-cube");
-const skateboard = scene.getMeshByName("m0-skateboard-debug");
-const camera = scene.getCameraByName("follow-camera");
-let isManualPaused = false;
-let isWindowFocused = true;
+const runScene = new RunScene();
+const scene = runScene.create(engine);
 
-if (!playerCube || !skateboard || !camera) {
-  throw new Error("Milestone 1 debug scene handles were not found.");
-}
+let playerVisualSnapshot = playerController.getVisualSnapshot();
+let isManualPaused = false;
+let isWindowFocused = document.hasFocus();
+let isDisposed = false;
 
 keyboardInput.attach();
 runStateStore.startRun();
+syncPauseState();
 
 engine.runRenderLoop(() => {
   const inputSnapshot = keyboardInput.getSnapshot();
+  const pauseWasToggled = inputSnapshot.pause;
 
-  if (inputSnapshot.pause) {
+  if (pauseWasToggled) {
     isManualPaused = !isManualPaused;
+    keyboardInput.reset();
     syncPauseState();
   }
 
   const deltaSeconds = clock.tick(engine.getDeltaTime());
 
-  if (deltaSeconds > 0) {
-    const playerSnapshot = playerController.update(inputSnapshot, deltaSeconds);
-    const state = runStateStore.getSnapshot();
+  if (deltaSeconds > 0 && !pauseWasToggled) {
+    playerController.update(inputSnapshot, deltaSeconds);
+    playerVisualSnapshot = playerController.getVisualSnapshot();
 
-    applyDebugPlayerView(
-      playerCube,
-      skateboard,
-      playerSnapshot.x,
-      playerSnapshot.y,
-      playerSnapshot.isCrouching
-    );
-    updateDebugCamera(camera as FreeCamera, playerSnapshot.x);
+    const state = runStateStore.getSnapshot();
     runStateStore.addDistance(state.speed * deltaSeconds);
   }
 
+  const frameSnapshot: PlayerVisualSnapshot = clock.isPaused()
+    ? { ...playerVisualSnapshot, state: "paused" }
+    : playerVisualSnapshot;
+
+  runScene.update(deltaSeconds, frameSnapshot);
   scene.render();
 });
 
-window.addEventListener("resize", () => {
+function handleResize(): void {
   engine.resize();
-});
-
-window.addEventListener("blur", () => {
-  isWindowFocused = false;
-  syncPauseState();
-});
-
-window.addEventListener("focus", () => {
-  isWindowFocused = true;
-  syncPauseState();
-});
-
-window.addEventListener("beforeunload", () => {
-  keyboardInput.detach();
-});
-
-function applyDebugPlayerView(
-  playerCube: AbstractMesh,
-  skateboard: AbstractMesh,
-  playerX: number,
-  playerY: number,
-  isCrouching: boolean
-): void {
-  const cubeScaleY = isCrouching ? 0.55 : 1;
-
-  playerCube.position.x = playerX;
-  playerCube.scaling.y = cubeScaleY;
-  playerCube.position.y = playerY + 0.72 * cubeScaleY;
-
-  skateboard.position.x = playerX;
-  skateboard.position.y = playerY + 0.12;
 }
 
-function updateDebugCamera(camera: FreeCamera, playerX: number): void {
-  camera.position.x += (playerX - camera.position.x) * 0.08;
-  camera.setTarget(new Vector3(camera.position.x * 0.25, 1.2, 10));
+function handleBlur(): void {
+  isWindowFocused = false;
+  keyboardInput.reset();
+  syncPauseState();
+}
+
+function handleFocus(): void {
+  isWindowFocused = true;
+  syncPauseState();
+}
+
+function handleDebugToggle(event: KeyboardEvent): void {
+  if (event.code !== "F3") {
+    return;
+  }
+
+  event.preventDefault();
+  runScene.toggleDebugHud();
 }
 
 function syncPauseState(): void {
@@ -123,4 +103,31 @@ function syncPauseState(): void {
     clock.resume();
     runStateStore.resumeRun();
   }
+}
+
+function disposeGame(): void {
+  if (isDisposed) {
+    return;
+  }
+
+  isDisposed = true;
+  window.removeEventListener("resize", handleResize);
+  window.removeEventListener("blur", handleBlur);
+  window.removeEventListener("focus", handleFocus);
+  window.removeEventListener("keydown", handleDebugToggle);
+  window.removeEventListener("beforeunload", disposeGame);
+  keyboardInput.detach();
+  engine.stopRenderLoop();
+  runScene.dispose();
+  engine.dispose();
+}
+
+window.addEventListener("resize", handleResize);
+window.addEventListener("blur", handleBlur);
+window.addEventListener("focus", handleFocus);
+window.addEventListener("keydown", handleDebugToggle);
+window.addEventListener("beforeunload", disposeGame);
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(disposeGame);
 }

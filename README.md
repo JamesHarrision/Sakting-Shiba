@@ -2,18 +2,23 @@
 
 Low-poly 3D endless runner about a cat riding a skateboard through a city. The technical direction is Babylon.js, TypeScript, and Vite with simple kinematic gameplay instead of real skateboard physics.
 
-## Milestone 0
+## Milestone 1
 
-This repo currently contains the foundation:
+The current integration build contains:
 
 - Vite + TypeScript + Babylon.js app shell.
-- Fullscreen 3D canvas with a ground plane, lane markers, camera, light, and debug player cube.
+- A polished whitebox rooftop world with three readable lanes, fog, lighting, and a runner camera.
+- A procedural cat and skateboard placeholder with lane, jump, crouch, and landing feedback.
+- Keyboard controls, pause handling, and a toggleable debug HUD.
 - Typed gameplay contracts.
 - Typed `GameEventBus`.
 - `GameClock`.
 - `RunStateStore`.
 - Gameplay config and starter spawn pattern data.
 - Vitest unit tests for the gameplay foundation.
+
+Controls: `A/D` or arrow keys change lanes, `W`/Up/Space jumps, `S`/Down crouches,
+`P`/Escape pauses, and `F3` toggles the debug HUD.
 
 ## Commands
 
