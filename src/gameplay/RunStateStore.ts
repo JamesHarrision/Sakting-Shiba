@@ -1,4 +1,4 @@
-import { GAMEPLAY_CONFIG } from "../config/gameplay/gameplayConfig";
+import { RUN_SPEED_CONFIG } from "../config/gameplay/runSpeedConfig";
 import type { RunState } from "../contracts/gameplay";
 import { GameEventBus } from "../events/GameEventBus";
 
@@ -48,7 +48,7 @@ export class RunStateStore {
   setSpeed(speed: number): void {
     this.state.speed = Math.min(
       Math.max(speed, 0),
-      GAMEPLAY_CONFIG.maximumSpeed
+      RUN_SPEED_CONFIG.maximumSpeed
     );
   }
 
@@ -75,7 +75,7 @@ export class RunStateStore {
       distance: 0,
       score: 0,
       fish: 0,
-      speed: GAMEPLAY_CONFIG.initialSpeed,
+      speed: RUN_SPEED_CONFIG.initialSpeed,
       combo: 0,
       isGameOver: false
     };

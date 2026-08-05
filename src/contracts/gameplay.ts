@@ -24,22 +24,3 @@ export interface InputSnapshot {
   crouch: boolean;
   pause: boolean;
 }
-
-export type SpawnItemKind = "obstacle" | "pickup" | "ramp" | "rail";
-
-export interface SpawnItem {
-  type: SpawnItemKind;
-  assetId: string;
-}
-
-export interface SpawnRow {
-  offsetZ: number;
-  lanes: [SpawnItem | null, SpawnItem | null, SpawnItem | null];
-}
-
-export interface SpawnPattern {
-  id: string;
-  minimumDifficulty: number;
-  weight: number;
-  rows: SpawnRow[];
-}
