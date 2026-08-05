@@ -8,6 +8,7 @@ import { PlayerController } from "./gameplay/PlayerController";
 import { RunStateStore } from "./gameplay/RunStateStore";
 import { KeyboardInputController } from "./input/KeyboardInputController";
 import { RunScene } from "./scenes/RunScene";
+import { PlayerAssetLoader } from "./assets/PlayerAssetLoader";
 import "./style.css";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
@@ -18,15 +19,20 @@ if (!canvas) {
 
 const engine = new Engine(canvas, true, {
   preserveDrawingBuffer: false,
-  stencil: true
+  stencil: true,
 });
 const eventBus = new GameEventBus();
 const clock = new GameClock();
 const runStateStore = new RunStateStore(eventBus);
 const playerController = new PlayerController(eventBus);
 const keyboardInput = new KeyboardInputController(window);
+
+// Create scene first so we have a Scene for the loader
 const runScene = new RunScene();
-const scene = runScene.create(engine);
+const playerAssetLoader = new PlayerAssetLoader();
+const scene = runScene.create(engine, playerAssetLoader);
+playerAssetLoader.setScene(scene);
+runScene.startAssetLoad();
 
 let playerVisualSnapshot = playerController.getVisualSnapshot();
 let isManualPaused = false;

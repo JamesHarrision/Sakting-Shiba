@@ -4,6 +4,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
 import { MaterialsRegistry } from "../assets/MaterialsRegistry";
+import type { PlayerAssetLoader } from "../assets/PlayerAssetLoader";
 import { WorldController } from "../world/WorldController";
 import { RunnerCameraController } from "../world/camera/RunnerCameraController";
 import { PlayerVisualController } from "../world/player/PlayerVisualController";
@@ -19,15 +20,17 @@ export class RunScene {
   private playerVisual!: PlayerVisualController;
   private playerRoot!: TransformNode;
   private playerCollider!: Mesh;
+  private playerAssetLoader!: PlayerAssetLoader;
   private debugHud!: DebugHud;
   private materials!: MaterialsRegistry;
   private fpsFrames = 0;
   private fpsTime = 0;
   private currentFps = 60;
 
-  create(engine: Engine): Scene {
+  create(engine: Engine, loader: PlayerAssetLoader): Scene {
     this.scene = new Scene(engine);
     this.materials = new MaterialsRegistry(this.scene);
+    this.playerAssetLoader = loader;
 
     // Build world
     this.worldController = new WorldController(this.scene, this.materials);
@@ -38,13 +41,13 @@ export class RunScene {
     this.playerRoot.position.set(
       LANE_X_POSITIONS[1],
       WORLD_VISUAL_CONFIG.trackThickness,
-      0
+      0,
     );
 
     this.playerCollider = MeshBuilder.CreateBox(
       "player-collider",
       { width: 0.9, height: 1.65, depth: 1.05 },
-      this.scene
+      this.scene,
     );
     this.playerCollider.parent = this.playerRoot;
     this.playerCollider.position.y = 0.85;
@@ -54,13 +57,13 @@ export class RunScene {
     this.playerVisual = new PlayerVisualController(
       this.scene,
       this.materials,
-      this.playerRoot
+      this.playerRoot,
+      this.playerAssetLoader,
     );
 
     // Camera
     this.cameraController = new RunnerCameraController(this.scene);
-    // Use the board deck as the "checkerboard" to prevent flicker
-    this.cameraController.initialize(this.playerVisual.player.boardDeck);
+    this.cameraController.initialize(this.playerVisual.getCheckerboardMesh());
 
     // Shadow casters
     for (const mesh of this.playerVisual.getShadowMeshes()) {
@@ -71,6 +74,11 @@ export class RunScene {
     this.debugHud = new DebugHud();
 
     return this.scene;
+  }
+
+  /** Start async model load. Call after create(). */
+  startAssetLoad(): void {
+    this.playerVisual.startModelLoad();
   }
 
   update(deltaSeconds: number, playerSnap: PlayerVisualSnapshot): void {
@@ -101,15 +109,21 @@ export class RunScene {
     }
 
     // Debug HUD
-    const activeMeshes = this.scene.meshes.filter(m => m.isEnabled()).length;
-    this.debugHud.update(this.currentFps, playerSnap, activeMeshes);
+    const activeMeshes = this.scene.meshes.filter((m) => m.isEnabled()).length;
+    this.debugHud.update(this.currentFps, playerSnap, activeMeshes, {
+      catLoaded: this.playerVisual.catAssetLoaded,
+      boardLoaded: this.playerVisual.boardAssetLoaded,
+      isModelFull: this.playerVisual.isModelLoaded,
+      catState: this.playerAssetLoader.getLoadState("player.cat"),
+      boardState: this.playerAssetLoader.getLoadState("player.skateboard"),
+    });
   }
 
   reset(initialLaneX: number = LANE_X_POSITIONS[1]): void {
     this.playerRoot.position.set(
       initialLaneX,
       WORLD_VISUAL_CONFIG.trackThickness,
-      0
+      0,
     );
     this.playerVisual.reset();
     this.cameraController.reset();
@@ -127,6 +141,7 @@ export class RunScene {
     this.cameraController.dispose();
     this.worldController.dispose();
     this.materials.dispose();
+    this.playerAssetLoader.dispose();
     this.scene.dispose();
   }
 
