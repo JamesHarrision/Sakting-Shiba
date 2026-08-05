@@ -1,5 +1,5 @@
 import type { Scene } from "@babylonjs/core/scene";
-import type { TransformNode } from "@babylonjs/core/Meshes/transformNode";
+import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import type { MaterialsRegistry } from "../../assets/MaterialsRegistry";
@@ -11,6 +11,7 @@ import { PlayerBlobShadow } from "../../vfx/PlayerBlobShadow";
 import { LandingDustEffect } from "../../vfx/LandingDustEffect";
 import { PLAYER_MODEL_CONFIG } from "../../config/visual/player-model.config";
 import { PLAYER_ASSET_IDS, type PlayerAssetId } from "../../assets/AssetRegistry";
+import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
 
 const CFG = PLAYER_MODEL_CONFIG;
 const RUN_BOB_SPEED = 8;
@@ -27,6 +28,8 @@ export class PlayerVisualController {
 
   private readonly blobShadow: PlayerBlobShadow;
   private readonly dustEffect: LandingDustEffect;
+  /** Shadow stays on the road surface; only follows the player's X (not the jumping root) */
+  private readonly shadowAnchor: TransformNode;
 
   private currentBob = 0;
   private state: PlayerVisualSnapshot = {
@@ -64,8 +67,11 @@ export class PlayerVisualController {
     // Hide model view until loaded
     this.modelView.hideModels();
 
-    // Blob shadow & dust are always on gameplayRoot
-    this.blobShadow = new PlayerBlobShadow(scene, gameplayRoot);
+    // Blob shadow anchored to the ROAD surface (world space), not the jumping
+    // player root — so it stays projected on the road and follows the player X.
+    this.shadowAnchor = new TransformNode("player-shadow-anchor", scene);
+    this.shadowAnchor.position.y = WORLD_VISUAL_CONFIG.trackThickness;
+    this.blobShadow = new PlayerBlobShadow(scene, this.shadowAnchor);
     this.dustEffect = new LandingDustEffect(scene, gameplayRoot);
   }
 
@@ -135,6 +141,8 @@ export class PlayerVisualController {
 
   applySnapshot(snap: PlayerVisualSnapshot): void {
     this.state = snap;
+    // Shadow follows the player's X/Z on the road surface (anchored in world space)
+    this.shadowAnchor.position.x = snap.positionX;
     this.blobShadow.update(snap.positionY);
   }
 
@@ -188,6 +196,7 @@ export class PlayerVisualController {
     this.player.dispose();
     this.blobShadow.dispose();
     this.dustEffect.dispose();
+    this.shadowAnchor.dispose();
   }
 
   // ─── animation targets ────────────────────────────────────

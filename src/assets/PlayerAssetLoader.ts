@@ -158,8 +158,10 @@ export class PlayerAssetLoader {
     const instanceRoot = new TransformNode(`${id}-instance-root`, this.scene);
     instanceRoot.parent = parent;
 
-    // Reparent top-level imported nodes under the instance root,
-    // preserving their world transforms (node matrices stay intact).
+    // Reparent top-level imported nodes under the instance root.
+    // NOTE: use direct parent assignment (keeps local transform), NOT
+    // setParent() — setParent preserves the OLD world transform (identity),
+    // which would cancel the calibration hierarchy and gameplay root motion.
     const topLevel: TransformNode[] = [];
     for (const node of container.transformNodes) {
       if (!node.parent) topLevel.push(node);
@@ -170,7 +172,7 @@ export class PlayerAssetLoader {
       }
     }
     for (const node of topLevel) {
-      node.setParent(instanceRoot);
+      node.parent = instanceRoot;
     }
 
     let instanceDisposed = false;
