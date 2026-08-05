@@ -3,6 +3,7 @@ import { Scene } from "@babylonjs/core/scene";
 import { describe, expect, it, vi } from "vitest";
 
 import { MaterialsRegistry } from "../../assets/MaterialsRegistry";
+import { PlayerAssetLoader } from "../../assets/PlayerAssetLoader";
 import type { PlayerVisualSnapshot } from "../../contracts/player-visual.contract";
 import { GameEventBus } from "../../events/GameEventBus";
 import { PlayerController } from "../../gameplay/PlayerController";
@@ -17,10 +18,12 @@ describe("Player runtime acceptance", () => {
     const scene = new Scene(engine);
     const materials = new MaterialsRegistry(scene);
     const rig = new PlayerRig(scene, { groundY: 0.15 });
+    const loader = new PlayerAssetLoader();
     const visual = new PlayerVisualController(
       scene,
       materials,
-      rig.nodes.importedVisualContainer
+      rig,
+      loader
     );
     const player = new PlayerController(new GameEventBus());
     const collider = new PlayerColliderController({ groundY: 0.15 });
@@ -100,6 +103,7 @@ describe("Player runtime acceptance", () => {
     } finally {
       consoleError.mockRestore();
       visual.dispose();
+      loader.dispose();
       rig.dispose();
       materials.dispose();
       scene.dispose();

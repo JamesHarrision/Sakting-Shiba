@@ -41,7 +41,7 @@ export class LandingDustEffect {
     this.remainingSeconds = 0.3;
   }
 
-  update(deltaSeconds: number, playerY: number): void {
+  update(deltaSeconds: number, _playerY: number): void {
     if (this.remainingSeconds <= 0) {
       return;
     }
@@ -50,7 +50,7 @@ export class LandingDustEffect {
     this.material.alpha = 0.5 * (this.remainingSeconds / 0.3);
 
     for (const particle of this.particles) {
-      particle.position.y = 0.03 - playerY;
+      particle.position.y = 0.03;
       particle.scaling.setAll(1 + (0.3 - this.remainingSeconds) * 2);
     }
 

@@ -33,7 +33,6 @@ export class PlayerBlobShadow {
     this.blob.scaling.x = scale;
     this.blob.scaling.y = 1;
     this.blob.scaling.z = scale * 1.4;
-    this.blob.position.y = 0.005 - playerY;
     this.material.alpha = 0.28 * (1 - heightFactor * 0.7);
   }
 

@@ -212,6 +212,8 @@ export class PlayerRig implements PlayerRigContract {
       playerRoot,
       colliderRoot,
       visualRoot,
+      catMount,
+      boardMount,
       importedVisualContainer,
       groundAnchor,
       shadowAnchor,

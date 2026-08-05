@@ -1,5 +1,16 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
+// Babylon.js shader side-effect imports (required with tree-shaken core imports).
+// Without these, shaders fall back to HTTP fetch and get the HTML page instead.
+import "@babylonjs/core/Shaders/default.fragment";
+import "@babylonjs/core/Shaders/default.vertex";
+import "@babylonjs/core/Shaders/pbr.fragment";
+import "@babylonjs/core/Shaders/pbr.vertex";
+import "@babylonjs/core/Shaders/shadowMap.fragment";
+import "@babylonjs/core/Shaders/shadowMap.vertex";
+import "@babylonjs/core/Shaders/postprocess.vertex";
+import "@babylonjs/core/Shaders/rgbdDecode.fragment";
+import "@babylonjs/core/Shaders/rgbdEncode.fragment";
 
 import type { PlayerVisualSnapshot } from "./contracts/player-visual.contract";
 import type { PlayerColliderSnapshot } from "./contracts/player-collider.contract";
@@ -11,6 +22,7 @@ import { KeyboardInputController } from "./input/KeyboardInputController";
 import { PlayerColliderController } from "./player/PlayerColliderController";
 import { RunScene } from "./scenes/RunScene";
 import { WORLD_VISUAL_CONFIG } from "./config/visual/world-visual.config";
+import { PlayerAssetLoader } from "./assets/PlayerAssetLoader";
 import "./style.css";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
@@ -21,7 +33,7 @@ if (!canvas) {
 
 const engine = new Engine(canvas, true, {
   preserveDrawingBuffer: false,
-  stencil: true
+  stencil: true,
 });
 const eventBus = new GameEventBus();
 const clock = new GameClock();
@@ -31,8 +43,12 @@ const playerColliderController = new PlayerColliderController({
   groundY: WORLD_VISUAL_CONFIG.trackThickness
 });
 const keyboardInput = new KeyboardInputController(window);
+
+// Create scene first so we have a Scene for the loader
 const runScene = new RunScene();
-const scene = runScene.create(engine);
+const playerAssetLoader = new PlayerAssetLoader();
+const scene = runScene.create(engine, playerAssetLoader);
+void runScene.startAssetLoad();
 
 let playerVisualSnapshot = playerController.getVisualSnapshot();
 let playerColliderSnapshot: Readonly<PlayerColliderSnapshot> =

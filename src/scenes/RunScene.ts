@@ -1,16 +1,18 @@
 import type { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
+
 import { MaterialsRegistry } from "../assets/MaterialsRegistry";
+import type { PlayerAssetLoader } from "../assets/PlayerAssetLoader";
+import { WORLD_VISUAL_CONFIG } from "../config/visual/world-visual.config";
+import type { PlayerCameraTargetSnapshot } from "../contracts/player-camera-target.contract";
+import type { PlayerColliderSnapshot } from "../contracts/player-collider.contract";
+import type { PlayerRigContract } from "../contracts/player-rig.contract";
+import type { PlayerVisualSnapshot } from "../contracts/player-visual.contract";
+import { PlayerRig } from "../player/PlayerRig";
+import { DebugHud } from "../ui/debug/DebugHud";
 import { WorldController } from "../world/WorldController";
 import { RunnerCameraController } from "../world/camera/RunnerCameraController";
 import { PlayerVisualController } from "../world/player/PlayerVisualController";
-import { DebugHud } from "../ui/debug/DebugHud";
-import type { PlayerVisualSnapshot } from "../contracts/player-visual.contract";
-import type { PlayerColliderSnapshot } from "../contracts/player-collider.contract";
-import type { PlayerCameraTargetSnapshot } from "../contracts/player-camera-target.contract";
-import type { PlayerRigContract } from "../contracts/player-rig.contract";
-import { PlayerRig } from "../player/PlayerRig";
-import { WORLD_VISUAL_CONFIG } from "../config/visual/world-visual.config";
 
 export class RunScene {
   private scene!: Scene;
@@ -18,6 +20,7 @@ export class RunScene {
   private cameraController!: RunnerCameraController;
   private playerVisual!: PlayerVisualController;
   private playerRig!: PlayerRig;
+  private playerAssetLoader!: PlayerAssetLoader;
   private debugHud!: DebugHud;
   private materials!: MaterialsRegistry;
   private fpsFrames = 0;
@@ -25,11 +28,12 @@ export class RunScene {
   private currentFps = 60;
   private isPlayerRigDebugVisible = false;
 
-  create(engine: Engine): Scene {
+  create(engine: Engine, loader: PlayerAssetLoader): Scene {
     this.scene = new Scene(engine);
     this.materials = new MaterialsRegistry(this.scene);
+    this.playerAssetLoader = loader;
+    this.playerAssetLoader.setScene(this.scene);
 
-    // Build world
     this.worldController = new WorldController(this.scene, this.materials);
     this.worldController.build();
 
@@ -42,24 +46,29 @@ export class RunScene {
     this.playerVisual = new PlayerVisualController(
       this.scene,
       this.materials,
-      this.playerRig.nodes.importedVisualContainer
+      this.playerRig,
+      this.playerAssetLoader
     );
-    this.playerRig.setVisualLoadState("fallback");
 
-    // Camera
     this.cameraController = new RunnerCameraController(this.scene);
-    // Use the board deck as the "checkerboard" to prevent flicker
-    this.cameraController.initialize(this.playerVisual.player.boardDeck);
+    this.cameraController.initialize(this.playerVisual.getCheckerboardMesh());
 
-    // Shadow casters
     for (const mesh of this.playerVisual.getShadowMeshes()) {
       this.worldController.lighting.addShadowCaster(mesh);
     }
 
-    // Debug HUD
     this.debugHud = new DebugHud();
-
     return this.scene;
+  }
+
+  async startAssetLoad(): Promise<void> {
+    await this.playerVisual.startModelLoad();
+
+    if (this.playerVisual.isModelLoaded) {
+      for (const mesh of this.playerVisual.getShadowMeshes()) {
+        this.worldController.lighting.addShadowCaster(mesh);
+      }
+    }
   }
 
   update(
@@ -69,18 +78,15 @@ export class RunScene {
     cameraSnap: Readonly<PlayerCameraTargetSnapshot>
   ): void {
     this.playerRig.applyGameplayState(playerSnap, colliderSnap);
-
     this.playerVisual.applySnapshot(playerSnap);
     this.playerVisual.update(deltaSeconds);
 
-    // Update camera
     this.cameraController.update(deltaSeconds, {
       targetX: cameraSnap.targetX,
       targetY: cameraSnap.targetY,
-      playerState: playerSnap.state,
+      playerState: playerSnap.state
     });
 
-    // FPS
     this.fpsFrames++;
     this.fpsTime += deltaSeconds;
     if (this.fpsTime >= 0.5) {
@@ -89,9 +95,14 @@ export class RunScene {
       this.fpsTime = 0;
     }
 
-    // Debug HUD
-    const activeMeshes = this.scene.meshes.filter(m => m.isEnabled()).length;
-    this.debugHud.update(this.currentFps, playerSnap, activeMeshes);
+    const activeMeshes = this.scene.meshes.filter((mesh) => mesh.isEnabled()).length;
+    this.debugHud.update(this.currentFps, playerSnap, activeMeshes, {
+      catLoaded: this.playerVisual.catAssetLoaded,
+      boardLoaded: this.playerVisual.boardAssetLoaded,
+      isModelFull: this.playerVisual.isModelLoaded,
+      catState: this.playerAssetLoader.getLoadState("player.cat"),
+      boardState: this.playerAssetLoader.getLoadState("player.skateboard")
+    });
   }
 
   reset(): void {
@@ -120,6 +131,7 @@ export class RunScene {
     this.cameraController.dispose();
     this.worldController.dispose();
     this.materials.dispose();
+    this.playerAssetLoader.dispose();
     this.scene.dispose();
   }
 

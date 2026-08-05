@@ -1,5 +1,14 @@
 import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
 import type { PlayerVisualSnapshot } from "../../contracts/player-visual.contract";
+import type { AssetLoadState } from "../../assets/PlayerAssetLoader";
+
+export interface DebugAssetInfo {
+  catLoaded: boolean;
+  boardLoaded: boolean;
+  isModelFull: boolean;
+  catState: AssetLoadState;
+  boardState: AssetLoadState;
+}
 
 export class DebugHud {
   private container?: HTMLDivElement;
@@ -33,16 +42,33 @@ export class DebugHud {
     document.body.appendChild(this.container);
   }
 
-  update(fps: number, snap: PlayerVisualSnapshot, activeMeshes: number): void {
+  update(
+    fps: number,
+    snap: PlayerVisualSnapshot,
+    activeMeshes: number,
+    assetInfo?: DebugAssetInfo,
+  ): void {
     if (!this.enabled || !this.container) return;
 
-    this.container.innerHTML = [
+    const lines = [
       `FPS: ${fps.toFixed(0)}`,
       `Lane: ${snap.laneIndex}`,
       `State: ${snap.state}`,
       `Y: ${snap.positionY.toFixed(2)}`,
       `Meshes: ${activeMeshes}`,
-    ].join("<br>");
+    ];
+
+    if (assetInfo) {
+      const catMark = assetInfo.catLoaded ? "v" : "x";
+      const boardMark = assetInfo.boardLoaded ? "v" : "x";
+      lines.push(
+        `Cat: ${catMark} (${assetInfo.catState})`,
+        `Board: ${boardMark} (${assetInfo.boardState})`,
+        assetInfo.isModelFull ? "Model: LOADED" : "Model: fallback",
+      );
+    }
+
+    this.container.innerHTML = lines.join("<br>");
   }
 
   toggle(): void {

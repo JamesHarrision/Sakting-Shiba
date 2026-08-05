@@ -115,6 +115,12 @@ export class ProceduralPlayer {
     return this.allMeshes;
   }
 
+  setEnabled(enabled: boolean): void {
+    for (const m of this.allMeshes) {
+      m.setEnabled(enabled);
+    }
+  }
+
   dispose(): void {
     this.root?.dispose();
   }
