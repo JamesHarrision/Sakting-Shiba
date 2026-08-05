@@ -8,6 +8,7 @@ import type { PlayerCameraTargetSnapshot } from "../contracts/player-camera-targ
 import type { PlayerColliderSnapshot } from "../contracts/player-collider.contract";
 import type { PlayerRigContract } from "../contracts/player-rig.contract";
 import type { PlayerVisualSnapshot } from "../contracts/player-visual.contract";
+import type { TrackManager } from "../world/track/TrackManager";
 import { PlayerRig } from "../player/PlayerRig";
 import { DebugHud } from "../ui/debug/DebugHud";
 import { WorldController } from "../world/WorldController";
@@ -75,11 +76,13 @@ export class RunScene {
     deltaSeconds: number,
     playerSnap: Readonly<PlayerVisualSnapshot>,
     colliderSnap: Readonly<PlayerColliderSnapshot>,
-    cameraSnap: Readonly<PlayerCameraTargetSnapshot>
+    cameraSnap: Readonly<PlayerCameraTargetSnapshot>,
+    speed: number
   ): void {
     this.playerRig.applyGameplayState(playerSnap, colliderSnap);
     this.playerVisual.applySnapshot(playerSnap);
     this.playerVisual.update(deltaSeconds);
+    this.worldController.trackManager.update(deltaSeconds, speed);
 
     this.cameraController.update(deltaSeconds, {
       targetX: cameraSnap.targetX,
@@ -102,13 +105,18 @@ export class RunScene {
       isModelFull: this.playerVisual.isModelLoaded,
       catState: this.playerAssetLoader.getLoadState("player.cat"),
       boardState: this.playerAssetLoader.getLoadState("player.skateboard")
-    });
+    }, this.worldController.trackManager.getDebugStats());
   }
 
   reset(): void {
     this.playerRig.reset();
     this.playerVisual.reset();
     this.cameraController.reset();
+    this.worldController.trackManager.reset();
+  }
+
+  getTrackManager(): TrackManager {
+    return this.worldController.trackManager;
   }
 
   toggleDebugHud(): void {

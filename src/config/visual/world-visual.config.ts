@@ -7,6 +7,13 @@ export interface WorldVisualConfig {
   laneMarkerWidth: number;
   rooftopEdgeHalfWidth: number;
   guardRailHeight: number;
+  /** Infinite track: length of one recycled chunk */
+  trackChunkLength: number;
+  /** Infinite track: number of pooled chunks (covers camera + fog range) */
+  trackChunkCount: number;
+  /** Debug spawn placeholder colors */
+  spawnObstacleColor: string;
+  spawnPickupColor: string;
   cameraHeight: number;
   cameraDistance: number;
   cameraLookAhead: number;
@@ -35,6 +42,10 @@ export const WORLD_VISUAL_CONFIG: WorldVisualConfig = {
   laneMarkerWidth: 0.06,
   rooftopEdgeHalfWidth: 1.4,
   guardRailHeight: 0.35,
+  trackChunkLength: 32,
+  trackChunkCount: 5,
+  spawnObstacleColor: "#D05545",
+  spawnPickupColor: "#E8B048",
   cameraHeight: 5.6,
   cameraDistance: 10.5,
   cameraLookAhead: 9,

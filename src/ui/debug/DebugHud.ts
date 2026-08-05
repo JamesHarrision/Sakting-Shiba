@@ -1,6 +1,7 @@
 import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
 import type { PlayerVisualSnapshot } from "../../contracts/player-visual.contract";
 import type { AssetLoadState } from "../../assets/PlayerAssetLoader";
+import type { TrackDebugStats } from "../../contracts/track.contract";
 
 export interface DebugAssetInfo {
   catLoaded: boolean;
@@ -47,6 +48,7 @@ export class DebugHud {
     snap: PlayerVisualSnapshot,
     activeMeshes: number,
     assetInfo?: DebugAssetInfo,
+    trackInfo?: TrackDebugStats,
   ): void {
     if (!this.enabled || !this.container) return;
 
@@ -65,6 +67,15 @@ export class DebugHud {
         `Cat: ${catMark} (${assetInfo.catState})`,
         `Board: ${boardMark} (${assetInfo.boardState})`,
         assetInfo.isModelFull ? "Model: LOADED" : "Model: fallback",
+      );
+    }
+
+    if (trackInfo) {
+      lines.push(
+        `Chunks: ${trackInfo.activeChunks} (pooled ${trackInfo.pooledChunks})`,
+        `Spawns: ${trackInfo.activeObstacles}obs ${trackInfo.activePickups}pick`,
+        `Speed: ${trackInfo.speed.toFixed(1)}`,
+        `FurthestZ: ${trackInfo.furthestChunkZ.toFixed(0)}`,
       );
     }
 
