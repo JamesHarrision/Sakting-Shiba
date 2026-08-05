@@ -27,6 +27,7 @@ const ONE_SHOT_ACTIONS = new Set<InputAction>([
 export class KeyboardInputController {
   private readonly pressedKeys = new Set<string>();
   private readonly pendingActions = new Set<InputAction>();
+  private attached = false;
   private readonly keydownHandler = (event: KeyboardEvent) => {
     this.handleKeyDown(event.code);
 
@@ -50,13 +51,22 @@ export class KeyboardInputController {
       throw new Error("KeyboardInputController requires a window target to attach.");
     }
 
+    if (this.attached) {
+      return;
+    }
+
     this.target.addEventListener("keydown", this.keydownHandler);
     this.target.addEventListener("keyup", this.keyupHandler);
+    this.attached = true;
   }
 
   detach(): void {
-    this.target?.removeEventListener("keydown", this.keydownHandler);
-    this.target?.removeEventListener("keyup", this.keyupHandler);
+    if (this.attached) {
+      this.target?.removeEventListener("keydown", this.keydownHandler);
+      this.target?.removeEventListener("keyup", this.keyupHandler);
+      this.attached = false;
+    }
+
     this.reset();
   }
 

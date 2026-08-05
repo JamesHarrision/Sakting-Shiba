@@ -55,5 +55,6 @@ export interface PlayerRigContract {
   setVisualLoadState(state: PlayerVisualLoadState): void;
   reportVisualLoadFailure(error: unknown, useFallback?: boolean): void;
   reset(): void;
+  isDisposed(): boolean;
   dispose(): void;
 }

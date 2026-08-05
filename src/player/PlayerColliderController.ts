@@ -20,7 +20,9 @@ export class PlayerColliderController {
   private snapshot: Readonly<PlayerColliderSnapshot>;
 
   constructor(options: PlayerColliderControllerOptions = {}) {
-    this.config = options.config ?? PLAYER_COLLIDER_CONFIG;
+    this.config = Object.freeze({
+      ...(options.config ?? PLAYER_COLLIDER_CONFIG)
+    });
     this.groundY = options.groundY ?? 0;
     this.playerZ = options.playerZ ?? 0;
     this.snapshot = this.createSnapshot(

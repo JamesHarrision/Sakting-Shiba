@@ -56,7 +56,9 @@ export class PlayerRig implements PlayerRigContract {
     this.groundY = options.groundY ?? 0;
     this.playerZ = options.playerZ ?? 0;
     this.cameraTargetYOffset = options.cameraTargetYOffset ?? 1.15;
-    this.colliderConfig = options.colliderConfig ?? PLAYER_COLLIDER_CONFIG;
+    this.colliderConfig = Object.freeze({
+      ...(options.colliderConfig ?? PLAYER_COLLIDER_CONFIG)
+    });
 
     const playerRoot = new TransformNode("player-root", scene);
     const colliderRoot = new TransformNode("player-collider-root", scene);
@@ -356,14 +358,12 @@ export class PlayerRig implements PlayerRigContract {
   }
 
   private updateDebugAnchorPositions(): void {
-    const [
-      groundMarker,
-      shadowMarker,
-      effectMarker,
-      cameraMarker,
-      catMarker,
-      boardMarker
-    ] = this.debugMeshes.slice(2);
+    const groundMarker = this.debugMeshes[2];
+    const shadowMarker = this.debugMeshes[3];
+    const effectMarker = this.debugMeshes[4];
+    const cameraMarker = this.debugMeshes[5];
+    const catMarker = this.debugMeshes[6];
+    const boardMarker = this.debugMeshes[7];
 
     groundMarker?.position.copyFrom(this.nodes.groundAnchor.position);
     shadowMarker?.position.copyFrom(this.nodes.shadowAnchor.position);

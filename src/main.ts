@@ -10,6 +10,7 @@ import { RunStateStore } from "./gameplay/RunStateStore";
 import { KeyboardInputController } from "./input/KeyboardInputController";
 import { PlayerColliderController } from "./player/PlayerColliderController";
 import { RunScene } from "./scenes/RunScene";
+import { WORLD_VISUAL_CONFIG } from "./config/visual/world-visual.config";
 import "./style.css";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
@@ -26,7 +27,9 @@ const eventBus = new GameEventBus();
 const clock = new GameClock();
 const runStateStore = new RunStateStore(eventBus);
 const playerController = new PlayerController(eventBus);
-const playerColliderController = new PlayerColliderController();
+const playerColliderController = new PlayerColliderController({
+  groundY: WORLD_VISUAL_CONFIG.trackThickness
+});
 const keyboardInput = new KeyboardInputController(window);
 const runScene = new RunScene();
 const scene = runScene.create(engine);
