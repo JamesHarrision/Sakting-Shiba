@@ -21,7 +21,7 @@ export class ProceduralPlayer {
   private allMeshes: Mesh[] = [];
 
   constructor(scene: Scene, materials: MaterialsRegistry) {
-    this.root = new TransformNode("player-visual-root", scene);
+    this.root = new TransformNode("procedural-player-root", scene);
     this.boardRoot = new TransformNode("board-visual-root", scene);
     this.boardRoot.parent = this.root;
 
@@ -113,6 +113,12 @@ export class ProceduralPlayer {
 
   get meshes(): readonly Mesh[] {
     return this.allMeshes;
+  }
+
+  setEnabled(enabled: boolean): void {
+    for (const m of this.allMeshes) {
+      m.setEnabled(enabled);
+    }
   }
 
   dispose(): void {
