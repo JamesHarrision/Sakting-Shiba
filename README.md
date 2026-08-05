@@ -10,6 +10,8 @@ The current integration build contains:
 - A polished whitebox rooftop world with three readable lanes, fog, lighting, and a runner camera.
 - A procedural cat and skateboard placeholder with lane, jump, crouch, and landing feedback.
 - Keyboard controls, pause handling, and a toggleable debug HUD.
+- A PlayerRig hierarchy with asset mount points, model-independent colliders,
+  readonly visual snapshots, fallback state, and restart-safe lifecycle.
 - Typed gameplay contracts.
 - Typed `GameEventBus`.
 - `GameClock`.
@@ -18,7 +20,10 @@ The current integration build contains:
 - Vitest unit tests for the gameplay foundation.
 
 Controls: `A/D` or arrow keys change lanes, `W`/Up/Space jumps, `S`/Down crouches,
-`P`/Escape pauses, and `F3` toggles the debug HUD.
+`P`/Escape pauses, `F3` toggles debug tools, and `R` resets the current run.
+
+PlayerRig integration details are documented in
+`docs/milestone-2-player-rig.md`.
 
 ## Commands
 

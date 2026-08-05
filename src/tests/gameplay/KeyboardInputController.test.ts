@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { KeyboardInputController } from "../../input/KeyboardInputController";
 
@@ -55,5 +55,21 @@ describe("KeyboardInputController", () => {
       crouch: false,
       jump: false
     });
+  });
+
+  it("attaches and detaches listeners idempotently", () => {
+    const target = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    } as unknown as Window;
+    const input = new KeyboardInputController(target);
+
+    input.attach();
+    input.attach();
+    input.detach();
+    input.detach();
+
+    expect(target.addEventListener).toHaveBeenCalledTimes(2);
+    expect(target.removeEventListener).toHaveBeenCalledTimes(2);
   });
 });

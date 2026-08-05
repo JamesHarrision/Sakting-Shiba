@@ -28,7 +28,8 @@ export class PlayerVisualController {
     horizontalDirection: 0,
     laneIndex: 1,
     isGrounded: true,
-    isCrouching: false
+    isCrouching: false,
+    crouchProgress: 0
   };
   private wasAirborne = false;
   private currentLean = 0;
@@ -38,12 +39,12 @@ export class PlayerVisualController {
   constructor(
     scene: Scene,
     materials: MaterialsRegistry,
-    gameplayRoot: TransformNode
+    visualParent: TransformNode
   ) {
     this.player = new ProceduralPlayer(scene, materials);
-    this.player.root.parent = gameplayRoot;
-    this.blobShadow = new PlayerBlobShadow(scene, gameplayRoot);
-    this.dustEffect = new LandingDustEffect(scene, gameplayRoot);
+    this.player.root.parent = visualParent;
+    this.blobShadow = new PlayerBlobShadow(scene, visualParent);
+    this.dustEffect = new LandingDustEffect(scene, visualParent);
     this.player.root.position.set(0, 0, 0);
   }
 

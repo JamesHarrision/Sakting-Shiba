@@ -2,12 +2,15 @@ import { Engine } from "@babylonjs/core/Engines/engine";
 import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
 
 import type { PlayerVisualSnapshot } from "./contracts/player-visual.contract";
+import type { PlayerColliderSnapshot } from "./contracts/player-collider.contract";
 import { GameEventBus } from "./events/GameEventBus";
 import { GameClock } from "./gameplay/GameClock";
 import { PlayerController } from "./gameplay/PlayerController";
 import { RunStateStore } from "./gameplay/RunStateStore";
 import { KeyboardInputController } from "./input/KeyboardInputController";
+import { PlayerColliderController } from "./player/PlayerColliderController";
 import { RunScene } from "./scenes/RunScene";
+import { WORLD_VISUAL_CONFIG } from "./config/visual/world-visual.config";
 import "./style.css";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
@@ -24,11 +27,16 @@ const eventBus = new GameEventBus();
 const clock = new GameClock();
 const runStateStore = new RunStateStore(eventBus);
 const playerController = new PlayerController(eventBus);
+const playerColliderController = new PlayerColliderController({
+  groundY: WORLD_VISUAL_CONFIG.trackThickness
+});
 const keyboardInput = new KeyboardInputController(window);
 const runScene = new RunScene();
 const scene = runScene.create(engine);
 
 let playerVisualSnapshot = playerController.getVisualSnapshot();
+let playerColliderSnapshot: Readonly<PlayerColliderSnapshot> =
+  playerColliderController.update(playerController.getSnapshot());
 let isManualPaused = false;
 let isWindowFocused = document.hasFocus();
 let isDisposed = false;
@@ -50,8 +58,9 @@ engine.runRenderLoop(() => {
   const deltaSeconds = clock.tick(engine.getDeltaTime());
 
   if (deltaSeconds > 0 && !pauseWasToggled) {
-    playerController.update(inputSnapshot, deltaSeconds);
+    const playerSnapshot = playerController.update(inputSnapshot, deltaSeconds);
     playerVisualSnapshot = playerController.getVisualSnapshot();
+    playerColliderSnapshot = playerColliderController.update(playerSnapshot);
 
     const state = runStateStore.getSnapshot();
     runStateStore.addDistance(state.speed * deltaSeconds);
@@ -60,8 +69,16 @@ engine.runRenderLoop(() => {
   const frameSnapshot: PlayerVisualSnapshot = clock.isPaused()
     ? { ...playerVisualSnapshot, state: "paused" }
     : playerVisualSnapshot;
+  const cameraSnapshot = playerController.getCameraTargetSnapshot(
+    clock.isPaused()
+  );
 
-  runScene.update(deltaSeconds, frameSnapshot);
+  runScene.update(
+    deltaSeconds,
+    frameSnapshot,
+    playerColliderSnapshot,
+    cameraSnapshot
+  );
   scene.render();
 });
 
@@ -80,13 +97,25 @@ function handleFocus(): void {
   syncPauseState();
 }
 
-function handleDebugToggle(event: KeyboardEvent): void {
-  if (event.code !== "F3") {
-    return;
+function handleGameShortcut(event: KeyboardEvent): void {
+  if (event.code === "F3") {
+    event.preventDefault();
+    runScene.toggleDebugHud();
+    runScene.togglePlayerRigDebug();
+  } else if (event.code === "KeyR") {
+    event.preventDefault();
+    restartRun();
   }
+}
 
-  event.preventDefault();
-  runScene.toggleDebugHud();
+function restartRun(): void {
+  keyboardInput.reset();
+  playerController.reset();
+  playerColliderController.reset();
+  playerVisualSnapshot = playerController.getVisualSnapshot();
+  playerColliderSnapshot = playerColliderController.getSnapshot();
+  runStateStore.startRun();
+  runScene.reset();
 }
 
 function syncPauseState(): void {
@@ -114,7 +143,7 @@ function disposeGame(): void {
   window.removeEventListener("resize", handleResize);
   window.removeEventListener("blur", handleBlur);
   window.removeEventListener("focus", handleFocus);
-  window.removeEventListener("keydown", handleDebugToggle);
+  window.removeEventListener("keydown", handleGameShortcut);
   window.removeEventListener("beforeunload", disposeGame);
   keyboardInput.detach();
   engine.stopRenderLoop();
@@ -125,7 +154,7 @@ function disposeGame(): void {
 window.addEventListener("resize", handleResize);
 window.addEventListener("blur", handleBlur);
 window.addEventListener("focus", handleFocus);
-window.addEventListener("keydown", handleDebugToggle);
+window.addEventListener("keydown", handleGameShortcut);
 window.addEventListener("beforeunload", disposeGame);
 
 if (import.meta.hot) {
