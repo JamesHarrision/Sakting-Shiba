@@ -1,5 +1,16 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
+// Babylon.js shader side-effect imports (required with tree-shaken core imports).
+// Without these, shaders fall back to HTTP fetch and get the HTML page instead.
+import "@babylonjs/core/Shaders/default.fragment";
+import "@babylonjs/core/Shaders/default.vertex";
+import "@babylonjs/core/Shaders/pbr.fragment";
+import "@babylonjs/core/Shaders/pbr.vertex";
+import "@babylonjs/core/Shaders/shadowMap.fragment";
+import "@babylonjs/core/Shaders/shadowMap.vertex";
+import "@babylonjs/core/Shaders/postprocess.vertex";
+import "@babylonjs/core/Shaders/rgbdDecode.fragment";
+import "@babylonjs/core/Shaders/rgbdEncode.fragment";
 
 import type { PlayerVisualSnapshot } from "./contracts/player-visual.contract";
 import { GameEventBus } from "./events/GameEventBus";
