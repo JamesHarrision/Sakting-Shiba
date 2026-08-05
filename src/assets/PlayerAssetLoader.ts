@@ -3,6 +3,7 @@ import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import type { AnimationGroup } from "@babylonjs/core/Animations/animationGroup";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
+import type { AssetContainer } from "@babylonjs/core/assetContainer";
 import "@babylonjs/loaders/glTF";
 import {
   getAssetEntry,
@@ -10,7 +11,12 @@ import {
   type PlayerAssetId,
 } from "./AssetRegistry";
 
-export type AssetLoadState = "idle" | "loading" | "loaded" | "fallback" | "failed";
+export type AssetLoadState =
+  | "idle"
+  | "loading"
+  | "loaded"
+  | "fallback"
+  | "failed";
 
 export interface PlayerModelInstance {
   root: TransformNode;
@@ -19,8 +25,13 @@ export interface PlayerModelInstance {
   dispose(): void;
 }
 
+/**
+ * Loads player GLB assets once and re-attaches them into the scene,
+ * preserving the imported node hierarchy (node matrix / TRS are kept).
+ */
 export class PlayerAssetLoader {
-  private readonly cache = new Map<PlayerAssetId, PlayerModelInstance>();
+  private readonly containers = new Map<PlayerAssetId, AssetContainer>();
+  private readonly instances = new Map<PlayerAssetId, PlayerModelInstance>();
   private readonly loadStates = new Map<PlayerAssetId, AssetLoadState>();
   private readonly loadErrors = new Map<PlayerAssetId, string>();
 
@@ -45,32 +56,24 @@ export class PlayerAssetLoader {
     return this.loadErrors.get(id);
   }
 
-  getAllLoadStates(): Record<string, AssetLoadState> {
-    const states: Record<string, AssetLoadState> = {};
-    for (const [id, state] of this.loadStates) {
-      states[id] = state;
-    }
-    return states;
-  }
-
   async preloadAll(): Promise<void> {
     const ids = Object.values(PLAYER_ASSET_IDS) as PlayerAssetId[];
-    const results = await Promise.allSettled(
-      ids.map((id) => this.preload(id)),
-    );
+    const results = await Promise.allSettled(ids.map((id) => this.preload(id)));
 
     for (let i = 0; i < ids.length; i++) {
       const result = results[i];
       if (result.status === "rejected") {
         console.warn(
-          `[PlayerAssetLoader] Failed to preload ${ids[i]}: ${String(result.reason)}`,
+          `[PlayerAssetLoader] Failed to preload ${ids[i]}: ${String(
+            (result as PromiseRejectedResult).reason,
+          )}`,
         );
       }
     }
   }
 
   async preload(id: PlayerAssetId): Promise<void> {
-    if (this.cache.has(id)) return;
+    if (this.containers.has(id)) return;
 
     const entry = getAssetEntry(id);
     this.loadStates.set(id, "loading");
@@ -82,21 +85,9 @@ export class PlayerAssetLoader {
         undefined,
         this.scene,
       );
-
-      const instance: PlayerModelInstance = {
-        root: container.transformNodes[0] ?? container.meshes[0],
-        meshes: container.meshes as AbstractMesh[],
-        animationGroups: container.animationGroups as AnimationGroup[],
-        dispose: () => {
-          container.removeAllFromScene();
-          container.dispose();
-        },
-      };
-
-      // Remove from scene so we can manually add later
+      // Remove from scene: instances will be attached on demand
       container.removeAllFromScene();
-
-      this.cache.set(id, instance);
+      this.containers.set(id, container);
       this.loadStates.set(id, "loaded");
     } catch (err) {
       this.loadStates.set(id, "failed");
@@ -105,7 +96,9 @@ export class PlayerAssetLoader {
     }
   }
 
-  async createCatInstance(parent: TransformNode): Promise<PlayerModelInstance> {
+  async createCatInstance(
+    parent: TransformNode,
+  ): Promise<PlayerModelInstance> {
     return this.createInstance(PLAYER_ASSET_IDS.cat as PlayerAssetId, parent);
   }
 
@@ -118,65 +111,82 @@ export class PlayerAssetLoader {
     );
   }
 
+  isLoaded(id: PlayerAssetId): boolean {
+    return this.containers.has(id);
+  }
+
+  areAllLoaded(): boolean {
+    return Object.values(PLAYER_ASSET_IDS).every((id) =>
+      this.containers.has(id as PlayerAssetId),
+    );
+  }
+
+  dispose(): void {
+    for (const [, instance] of this.instances) {
+      instance.dispose();
+    }
+    this.instances.clear();
+    for (const [, container] of this.containers) {
+      container.dispose();
+    }
+    this.containers.clear();
+    this.loadStates.clear();
+    this.loadErrors.clear();
+  }
+
+  // ── private ─────────────────────────────────────────────────
+
   private async createInstance(
     id: PlayerAssetId,
     parent: TransformNode,
   ): Promise<PlayerModelInstance> {
-    const cached = this.cache.get(id);
-    if (!cached) {
+    if (!this.containers.has(id)) {
       await this.preload(id);
     }
 
-    const source = this.cache.get(id);
-    if (!source) {
+    const container = this.containers.get(id);
+    if (!container) {
       throw new Error(
         `Asset ${id} not available. Load state: ${this.loadStates.get(id)}`,
       );
     }
 
-    // Clone into the scene at the parent with a clean instance root
+    // Bring the whole imported hierarchy into the scene
+    container.addAllToScene();
+
+    // Fresh instance root under the calibration parent
     const instanceRoot = new TransformNode(`${id}-instance-root`, this.scene);
     instanceRoot.parent = parent;
 
-    const newMeshes: AbstractMesh[] = [];
-    for (const mesh of source.meshes) {
-      const clone = mesh.clone(mesh.name, instanceRoot) as AbstractMesh;
-      newMeshes.push(clone);
+    // Reparent top-level imported nodes under the instance root,
+    // preserving their world transforms (node matrices stay intact).
+    const topLevel: TransformNode[] = [];
+    for (const node of container.transformNodes) {
+      if (!node.parent) topLevel.push(node);
+    }
+    for (const mesh of container.meshes) {
+      if (!mesh.parent && !topLevel.includes(mesh)) {
+        topLevel.push(mesh);
+      }
+    }
+    for (const node of topLevel) {
+      node.setParent(instanceRoot);
     }
 
+    let instanceDisposed = false;
     const instance: PlayerModelInstance = {
       root: instanceRoot,
-      meshes: newMeshes,
-      animationGroups: source.animationGroups.map((ag) =>
-        ag.clone(`${ag.name}-instance`),
-      ),
+      meshes: container.meshes as AbstractMesh[],
+      animationGroups: container.animationGroups as AnimationGroup[],
       dispose: () => {
-        for (const m of newMeshes) {
-          m.dispose();
-        }
+        if (instanceDisposed) return;
+        instanceDisposed = true;
+        container.removeAllFromScene();
         instanceRoot.dispose();
       },
     };
 
+    this.instances.set(id, instance);
     return instance;
-  }
-
-  isLoaded(id: PlayerAssetId): boolean {
-    return this.cache.has(id);
-  }
-
-  areAllLoaded(): boolean {
-    return Object.values(PLAYER_ASSET_IDS).every((id) =>
-      this.cache.has(id as PlayerAssetId),
-    );
-  }
-
-  dispose(): void {
-    for (const [, instance] of this.cache) {
-      instance.dispose();
-    }
-    this.cache.clear();
-    this.loadStates.clear();
-    this.loadErrors.clear();
   }
 }

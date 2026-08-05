@@ -271,9 +271,11 @@ export class PlayerVisualController {
 
     if (this.isModelLoaded) {
       this.modelView.catMount.scaling.y = this.squatScale;
+      // Keep feet locked to the board deck while squashing down
+      const targetY = CFG.boardDeckHeight + CFG.catFootOffset * this.squatScale;
       this.modelView.catMount.position.y = this.smoothTo(
         this.modelView.catMount.position.y,
-        CFG.catSeatHeight * 0.55,
+        targetY,
         12, dt,
       );
     } else {
