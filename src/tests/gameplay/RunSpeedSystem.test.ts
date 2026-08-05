@@ -36,6 +36,18 @@ describe("RunSpeedSystem", () => {
     expect(system.getDifficulty()).toBe(difficultyBeforePause);
   });
 
+  it("continues speed and difficulty progression after resume", () => {
+    const system = new RunSpeedSystem(CONFIG);
+    system.update(4);
+    system.pause();
+    system.update(100);
+    system.resume();
+    system.update(1);
+
+    expect(system.getCurrentSpeed()).toBe(20);
+    expect(system.getDifficulty()).toBe(1);
+  });
+
   it("resets speed, difficulty, and pause state", () => {
     const system = new RunSpeedSystem(CONFIG);
     system.update(12);

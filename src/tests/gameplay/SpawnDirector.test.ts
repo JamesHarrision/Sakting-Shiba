@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { SPAWN_DIRECTOR_CONFIG } from "../../config/gameplay/spawnDirectorConfig";
 import { SPAWN_PATTERNS } from "../../config/gameplay/spawnPatterns";
+import type { SpawnPattern } from "../../contracts/spawn-pattern.contract";
 import { SpawnDirector } from "../../gameplay/spawning/SpawnDirector";
 
 describe("SpawnDirector", () => {
@@ -29,6 +30,43 @@ describe("SpawnDirector", () => {
     );
 
     expect(firstSequence).toEqual(secondSequence);
+  });
+
+  it("produces different pattern sequences for different seeds", () => {
+    const first = new SpawnDirector(SPAWN_PATTERNS, { seed: 111 });
+    const second = new SpawnDirector(SPAWN_PATTERNS, { seed: 222 });
+
+    const firstSequence = Array.from(
+      { length: 30 },
+      () => first.createNextRequest(0, 5)?.patternId
+    );
+    const secondSequence = Array.from(
+      { length: 30 },
+      () => second.createNextRequest(0, 5)?.patternId
+    );
+
+    expect(firstSequence).not.toEqual(secondSequence);
+  });
+
+  it("uses pattern weights when selecting eligible patterns", () => {
+    const weightedPatterns: readonly SpawnPattern[] = SPAWN_PATTERNS
+      .slice(0, 3)
+      .map((pattern, index) => ({
+        ...pattern,
+        weight: index === 0 ? 1000 : 1
+      }));
+    const director = new SpawnDirector(weightedPatterns, { seed: 2026 });
+    let dominantSelections = 0;
+
+    for (let index = 0; index < 500; index += 1) {
+      if (
+        director.createNextRequest(0, 0)?.patternId === weightedPatterns[0].id
+      ) {
+        dominantSelections += 1;
+      }
+    }
+
+    expect(dominantSelections).toBeGreaterThan(490);
   });
 
   it("keeps requests away from the player and prevents overlap", () => {
