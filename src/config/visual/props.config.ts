@@ -41,15 +41,27 @@ export interface PropAssetEntry {
   readonly calibration: PropCalibration;
 }
 
+/**
+ * Calibration per kind, computed from the real GLB audit (scripts/audit-props.mjs).
+ * World bbox at scale 1:
+ * - box 2x2x2 (center pivot)        -> scale 0.45 => 0.9 cube
+ * - building 5.8x5.1x8.9 (center)   -> scale 0.8, base at y=-2.707
+ * - cone Z-up (axis along Z)        -> scale 0.3, rotate x -90 to stand
+ * - dumpster 2.2x2.3x2.8 (center)   -> scale 0.45, base at y=-1.167
+ * - fence 20x40x96 (length along Z) -> scale 0.025
+ * - lamp 35.7 tall (base at y=0)    -> scale 0.05
+ * - plant 5.1x6.1x4.9 (center)      -> scale 0.2, base at y=-1
+ * - tree 4.1x7.5x5.0 (center)       -> scale 0.25, base at y=-4.55
+ */
 export const PROP_ASSETS: readonly PropAssetEntry[] = [
-  { kind: "building", assetPath: `${PROPS_ASSET_DIR}/building.glb`, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 1 } },
-  { kind: "lamp", assetPath: `${PROPS_ASSET_DIR}/lamp.glb`, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 1 } },
-  { kind: "fence", assetPath: `${PROPS_ASSET_DIR}/fence.glb`, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 90, z: 0 }, scale: 1 } },
-  { kind: "box", assetPath: `${PROPS_ASSET_DIR}/box.glb`, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 1 } },
-  { kind: "cone", assetPath: `${PROPS_ASSET_DIR}/cone.glb`, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 1 } },
-  { kind: "dumpster", assetPath: `${PROPS_ASSET_DIR}/dumpster.glb`, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 1 } },
-  { kind: "tree", assetPath: `${PROPS_ASSET_DIR}/tree.glb`, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 1 } },
-  { kind: "plant", assetPath: `${PROPS_ASSET_DIR}/plant.glb`, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 1 } },
+  { kind: "box", assetPath: `${PROPS_ASSET_DIR}/box.glb`, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 0.45 } },
+  { kind: "building", assetPath: `${PROPS_ASSET_DIR}/building.glb`, calibration: { position: { x: 0, y: 2.166, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 0.8 } },
+  { kind: "cone", assetPath: `${PROPS_ASSET_DIR}/cone.glb`, calibration: { position: { x: 0, y: 0.013, z: 0 }, rotationDegrees: { x: -90, y: 0, z: 0 }, scale: 0.3 } },
+  { kind: "dumpster", assetPath: `${PROPS_ASSET_DIR}/dumpster.glb`, calibration: { position: { x: 0, y: 0.525, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 0.45 } },
+  { kind: "fence", assetPath: `${PROPS_ASSET_DIR}/fence.glb`, calibration: { position: { x: 0, y: 0.238, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 0.025 } },
+  { kind: "lamp", assetPath: `${PROPS_ASSET_DIR}/lamp.glb`, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 0.05 } },
+  { kind: "plant", assetPath: `${PROPS_ASSET_DIR}/plant.glb`, calibration: { position: { x: 0, y: 0.2, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 0.2 } },
+  { kind: "tree", assetPath: `${PROPS_ASSET_DIR}/tree.glb`, calibration: { position: { x: 0, y: 1.14, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 0.25 } },
   // Procedural-only rooftop staples (no asset yet)
   { kind: "vent", assetPath: null, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 1 } },
   { kind: "ac", assetPath: null, calibration: { position: { x: 0, y: 0, z: 0 }, rotationDegrees: { x: 0, y: 0, z: 0 }, scale: 1 } },

@@ -1,5 +1,4 @@
 import type { Scene } from "@babylonjs/core/scene";
-import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
@@ -8,6 +7,7 @@ import { GAMEPLAY_CONFIG, LANE_X_POSITIONS } from "../../config/gameplay/gamepla
 import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
 import type { SpawnRequest, TrackDebugStats } from "../../contracts/track.contract";
 import type { PropFactory } from "../props/PropFactory";
+import type { PropKind } from "../../config/visual/props.config";
 import { SpawnItemPool } from "../pool/SpawnItemPool";
 import { StraightChunkA } from "./chunks/StraightChunkA";
 import { StraightChunkB } from "./chunks/StraightChunkB";
@@ -17,11 +17,19 @@ import type { TrackChunk } from "./chunks/TrackChunk";
 const CFG = WORLD_VISUAL_CONFIG;
 
 interface ActiveSpawnItem {
-  readonly pool: SpawnItemPool;
-  readonly mesh: Mesh;
+  /** Returns the item to its pool / disposes its asset instance */
+  readonly release: () => void;
   /** Local Z in scroll space (world Z at placement) */
   readonly localZ: number;
 }
+
+/** Maps gameplay obstacle assetIds to real prop kinds (fallback: debug box). */
+const OBSTACLE_KIND_BY_ASSET: Readonly<Record<string, PropKind>> = {
+  "obstacle.box": "box",
+  "obstacle.cone": "cone",
+  "obstacle.dumpster": "dumpster",
+  "obstacle.fence": "fence"
+};
 
 export interface ChunkWorldRange {
   readonly index: number;
@@ -62,6 +70,7 @@ export class TrackManager {
   private lastSpeed: number = GAMEPLAY_CONFIG.initialSpeed;
   private poolExhaustedWarned = false;
   private readonly reusePosition = new Vector3();
+  private props?: PropFactory;
 
   constructor(
     private readonly scene: Scene,
@@ -159,7 +168,7 @@ export class TrackManager {
             return;
           }
           if (item.type === "obstacle") {
-            this.placeObstacle(lane, worldZ);
+            this.placeObstacle(lane, worldZ, item.assetId);
           } else if (item.type === "pickup") {
             this.placePickup(lane, worldZ);
           }
@@ -251,26 +260,43 @@ export class TrackManager {
       const entry = this.activeItems[i];
       const worldZ = entry.localZ + this.trackRoot.position.z;
       if (worldZ < this.recycleBehindZ) {
-        entry.pool.release(entry.mesh);
+        entry.release();
         this.activeItems.splice(i, 1);
       }
     }
   }
 
-  private placeObstacle(lane: number, worldZ: number): void {
+  private placeObstacle(lane: number, worldZ: number, assetId: string): void {
+    const kind = OBSTACLE_KIND_BY_ASSET[assetId];
+    const laneX = LANE_X_POSITIONS[lane as keyof typeof LANE_X_POSITIONS];
+
+    // Prefer the real prop asset when it is loaded
+    if (kind && this.props?.canRender(kind)) {
+      const instance = this.props.create(
+        kind,
+        this.spawnRoot,
+        this.reusePosition.set(laneX, CFG.trackThickness, worldZ),
+        9000 + this.activeItems.length
+      );
+      this.activeItems.push({
+        release: () => instance.dispose(),
+        localZ: worldZ
+      });
+      return;
+    }
+
     const mesh = this.obstaclePool.acquire(
       this.spawnRoot,
-      this.reusePosition.set(
-        LANE_X_POSITIONS[lane as keyof typeof LANE_X_POSITIONS],
-        CFG.trackThickness + 0.9,
-        worldZ
-      )
+      this.reusePosition.set(laneX, CFG.trackThickness + 0.9, worldZ)
     );
     if (!mesh) {
       this.warnPoolExhausted("obstacle");
       return;
     }
-    this.activeItems.push({ pool: this.obstaclePool, mesh, localZ: worldZ });
+    this.activeItems.push({
+      release: () => this.obstaclePool.release(mesh),
+      localZ: worldZ
+    });
   }
 
   private placePickup(lane: number, worldZ: number): void {
@@ -286,12 +312,15 @@ export class TrackManager {
       this.warnPoolExhausted("pickup");
       return;
     }
-    this.activeItems.push({ pool: this.pickupPool, mesh, localZ: worldZ });
+    this.activeItems.push({
+      release: () => this.pickupPool.release(mesh),
+      localZ: worldZ
+    });
   }
 
   private releaseAllSpawnItems(): void {
     for (const entry of this.activeItems) {
-      entry.pool.release(entry.mesh);
+      entry.release();
     }
     this.activeItems.length = 0;
   }

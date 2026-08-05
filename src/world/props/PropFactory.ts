@@ -28,6 +28,11 @@ export class PropFactory {
     private readonly loader: PropAssetLoader
   ) {}
 
+  /** Whether a real GLB is available for this kind (else procedural). */
+  canRender(kind: PropKind): boolean {
+    return this.loader.has(kind);
+  }
+
   /** Creates a prop at `position` (parent-local space). Returns a dispose handle. */
   create(
     kind: PropKind,
@@ -57,6 +62,10 @@ export class PropFactory {
     const instanceRoot = new TransformNode(`prop-${kind}-instance`, this.scene);
     instanceRoot.parent = parent;
     instanceRoot.position.copyFrom(position);
+    // Calibration offset (raises center-pivoted models so they sit on the ground)
+    instanceRoot.position.x += entry.calibration.position.x;
+    instanceRoot.position.y += entry.calibration.position.y;
+    instanceRoot.position.z += entry.calibration.position.z;
     instanceRoot.rotation.set(
       degToRad(entry.calibration.rotationDegrees.x),
       degToRad(entry.calibration.rotationDegrees.y),
