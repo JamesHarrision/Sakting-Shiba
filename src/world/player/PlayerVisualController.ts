@@ -39,12 +39,12 @@ export class PlayerVisualController {
   constructor(
     scene: Scene,
     materials: MaterialsRegistry,
-    gameplayRoot: TransformNode
+    visualParent: TransformNode
   ) {
     this.player = new ProceduralPlayer(scene, materials);
-    this.player.root.parent = gameplayRoot;
-    this.blobShadow = new PlayerBlobShadow(scene, gameplayRoot);
-    this.dustEffect = new LandingDustEffect(scene, gameplayRoot);
+    this.player.root.parent = visualParent;
+    this.blobShadow = new PlayerBlobShadow(scene, visualParent);
+    this.dustEffect = new LandingDustEffect(scene, visualParent);
     this.player.root.position.set(0, 0, 0);
   }
 
