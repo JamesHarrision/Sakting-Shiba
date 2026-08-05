@@ -63,6 +63,7 @@ export class RunScene {
   }
 
   async startAssetLoad(): Promise<void> {
+    await this.worldController.startAssetLoad();
     await this.playerVisual.startModelLoad();
 
     if (this.playerVisual.isModelLoaded) {

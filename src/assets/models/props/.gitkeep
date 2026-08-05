@@ -1,0 +1,3 @@
+# Drop real prop GLBs here (building.glb, lamp.glb, fence.glb, box.glb,
+# cone.glb, dumpster.glb, tree.glb, plant.glb) — the game picks them up
+# automatically via import.meta.glob and falls back to procedural builders.

@@ -10,6 +10,8 @@ import type { SpawnItem } from "../../contracts/gameplay";
 import type { SpawnRequest } from "../../contracts/track.contract";
 import { SpawnPlaceholderFeeder } from "../../world/track/SpawnPlaceholderFeeder";
 import { TrackManager } from "../../world/track/TrackManager";
+import { PropAssetLoader } from "../../world/props/PropAssetLoader";
+import { PropFactory } from "../../world/props/PropFactory";
 
 const OBSTACLE: SpawnItem = { type: "obstacle", assetId: "obstacle.box" };
 const PICKUP: SpawnItem = { type: "pickup", assetId: "pickup.fish" };
@@ -24,13 +26,17 @@ function createFixture(): {
   const materials = new MaterialsRegistry(scene);
   const manager = new TrackManager(scene, materials);
   const parent = new TransformNode("test-parent", scene);
-  manager.build(parent);
+  const propLoader = new PropAssetLoader();
+  propLoader.setScene(scene);
+  const propFactory = new PropFactory(scene, materials, propLoader);
+  manager.build(parent, propFactory);
 
   return {
     scene,
     manager,
     dispose: () => {
       manager.dispose();
+      propLoader.dispose();
       materials.dispose();
       scene.dispose();
       engine.dispose();

@@ -3,8 +3,11 @@ import type { MaterialsRegistry } from "../../../assets/MaterialsRegistry";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { WORLD_VISUAL_CONFIG } from "../../../config/visual/world-visual.config";
 import { GAMEPLAY_CONFIG } from "../../../config/gameplay/gameplayConfig";
+import type { PropKind } from "../../../config/visual/props.config";
+import type { PropFactory, PropInstance } from "../../props/PropFactory";
 
 const CFG = WORLD_VISUAL_CONFIG;
 const HALF_TRACK = CFG.trackWidth / 2;
@@ -12,16 +15,8 @@ const HALF_TRACK = CFG.trackWidth / 2;
 export interface TrackChunkContext {
   readonly scene: Scene;
   readonly materials: MaterialsRegistry;
+  readonly props: PropFactory;
 }
-
-export type PropKind =
-  | "vent"
-  | "ac"
-  | "pipe"
-  | "antenna"
-  | "warningLight"
-  | "barrier"
-  | "building";
 
 export function seededRandom(seed: number): () => number {
   let s = seed;
@@ -41,7 +36,9 @@ export abstract class TrackChunk {
   readonly root: TransformNode;
 
   protected readonly meshes: Mesh[] = [];
+  protected readonly propInstances: PropInstance[] = [];
   protected readonly chunkLength = CFG.trackChunkLength;
+  private propSeed = 0;
 
   constructor(protected readonly ctx: TrackChunkContext) {
     this.root = new TransformNode("track-chunk", ctx.scene);
@@ -49,8 +46,21 @@ export abstract class TrackChunk {
 
   /** Builds the chunk meshes ONCE. seedOffset varies prop placement per chunk. */
   build(seedOffset: number): void {
+    this.propSeed = seedOffset;
     this.buildTrackBase();
     this.buildVariantProps(seedOffset);
+  }
+
+  /**
+   * Rebuilds only the props (after real GLB assets finish loading).
+   * Track geometry stays untouched.
+   */
+  rebuildProps(): void {
+    for (const instance of this.propInstances) {
+      instance.dispose();
+    }
+    this.propInstances.length = 0;
+    this.buildVariantProps(this.propSeed);
   }
 
   protected buildTrackBase(): void {
@@ -158,90 +168,16 @@ export abstract class TrackChunk {
    */
   protected readonly rooftopX = HALF_TRACK + CFG.rooftopEdgeHalfWidth / 2 + 0.35;
 
-  /** Places one prop mesh. Materials come from the shared registry. */
+  /** Places one prop via the PropFactory (real GLB when loaded, else procedural). */
   protected placeProp(
     kind: PropKind,
     x: number,
     z: number,
-    rand: () => number
+    seed: number
   ): void {
-    const { scene, materials } = this.ctx;
-    const matProp = materials.createMaterial("rooftop.prop", "#484550");
-    const matAccent = materials.createMaterial("accent.warning", "#E8983E");
-    const matBuilding = materials.createMaterial("rooftop.building", "#565C6C");
-
-    let mesh: Mesh;
-    switch (kind) {
-      case "vent":
-        mesh = MeshBuilder.CreateBox(
-          "vent",
-          { width: 0.55, height: 0.45, depth: 0.5 },
-          scene
-        );
-        mesh.position.set(x + (rand() - 0.5) * 0.6, 0.25, z);
-        mesh.material = matProp;
-        break;
-      case "ac":
-        mesh = MeshBuilder.CreateBox(
-          "ac-unit",
-          { width: 0.45, height: 0.35, depth: 0.7 },
-          scene
-        );
-        mesh.position.set(x + (rand() - 0.5) * 0.6, 0.18, z);
-        mesh.material = matProp;
-        break;
-      case "pipe":
-        mesh = MeshBuilder.CreateCylinder(
-          "pipe",
-          { diameter: 0.12, height: 0.7 + rand() * 0.5, tessellation: 8 },
-          scene
-        );
-        mesh.position.set(x + (rand() - 0.5) * 0.5, 0.35, z);
-        mesh.material = matProp;
-        break;
-      case "antenna":
-        mesh = MeshBuilder.CreateCylinder(
-          "antenna",
-          { diameter: 0.04, height: 1.1 + rand() * 0.8, tessellation: 6 },
-          scene
-        );
-        mesh.position.set(x + (rand() - 0.5) * 0.4, 0.6, z);
-        mesh.material = matProp;
-        break;
-      case "warningLight":
-        mesh = MeshBuilder.CreateSphere(
-          "warn-light",
-          { diameter: 0.18, segments: 8 },
-          scene
-        );
-        mesh.position.set(x, 0.62, z);
-        mesh.material = matAccent;
-        break;
-      case "barrier":
-        mesh = MeshBuilder.CreateBox(
-          "barrier",
-          { width: 0.5, height: 0.3, depth: 1.4 },
-          scene
-        );
-        mesh.position.set(x, 0.15, z);
-        mesh.material = matProp;
-        break;
-      case "building": {
-        const h = 3 + rand() * 3.5;
-        const w = 1.4 + rand() * 1.4;
-        mesh = MeshBuilder.CreateBox(
-          "building-silhouette",
-          { width: w, height: h, depth: 1.2 + rand() * 1 },
-          scene
-        );
-        mesh.position.set(x, h / 2, z);
-        mesh.material = matBuilding;
-        break;
-      }
-    }
-
-    mesh.parent = this.root;
-    this.meshes.push(mesh);
+    this.propInstances.push(
+      this.ctx.props.create(kind, this.root, new Vector3(x, 0, z), seed)
+    );
   }
 
   /** Variant-specific environment props. */

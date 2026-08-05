@@ -7,6 +7,7 @@ import type { MaterialsRegistry } from "../../assets/MaterialsRegistry";
 import { GAMEPLAY_CONFIG, LANE_X_POSITIONS } from "../../config/gameplay/gameplayConfig";
 import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
 import type { SpawnRequest, TrackDebugStats } from "../../contracts/track.contract";
+import type { PropFactory } from "../props/PropFactory";
 import { SpawnItemPool } from "../pool/SpawnItemPool";
 import { StraightChunkA } from "./chunks/StraightChunkA";
 import { StraightChunkB } from "./chunks/StraightChunkB";
@@ -102,18 +103,32 @@ export class TrackManager {
     });
   }
 
-  build(parent: TransformNode): void {
+  build(parent: TransformNode, props: PropFactory): void {
     this.root.parent = parent;
 
     const variantCtors = [StraightChunkA, StraightChunkB, StraightChunkC];
     for (let i = 0; i < this.chunkCount; i++) {
       const ctor = variantCtors[i % variantCtors.length];
-      const chunk = new ctor({ scene: this.scene, materials: this.materials });
+      const chunk = new ctor({
+        scene: this.scene,
+        materials: this.materials,
+        props
+      });
       chunk.build(i);
       chunk.root.parent = this.trackRoot;
       // Initial locals cover [-chunkLength, (chunkCount-1) * chunkLength]
       chunk.root.position.z = (i - 1) * this.chunkLength;
       this.chunks.push(chunk);
+    }
+  }
+
+  /**
+   * Replaces chunk props with the real GLB assets once they finish loading
+   * (no-op when assets are absent — procedural props stay).
+   */
+  applyLoadedProps(): void {
+    for (const chunk of this.chunks) {
+      chunk.rebuildProps();
     }
   }
 
