@@ -43,11 +43,16 @@ export class LightingRig {
     this.directional.position = new Vector3(12, 20, -15);
     this.directional.intensity = cfg.directionalIntensity;
 
-    // Shadows for player only
+    if (!cfg.enableDynamicShadows) {
+      return;
+    }
+
+    // Dynamic shadows are optional; the default performance preset uses the
+    // cheaper player blob shadow instead.
     this.shadowGenerator = new ShadowGenerator(1024, this.directional);
     this.shadowGenerator.useBlurExponentialShadowMap = false;
     this.shadowGenerator.usePercentageCloserFiltering = true;
-    this.shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_MEDIUM;
+    this.shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_LOW;
     this.shadowGenerator.bias = 0.0005;
     this.shadowGenerator.normalBias = 0.02;
     this.shadowGenerator.setDarkness(0.55);

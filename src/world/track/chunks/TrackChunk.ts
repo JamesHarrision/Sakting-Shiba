@@ -114,13 +114,14 @@ export abstract class TrackChunk {
       this.meshes.push(marker);
     }
 
-    // Guard rails (posts every 8 units + top bar)
+    // Guard rails use sparse posts; the long top bar carries the silhouette
+    // while keeping repeated geometry inside the performance budget.
     const matRail = materials.createMaterial("track.guardRail", "#6E6B75");
     const gh = CFG.guardRailHeight;
     const y0 = thickness + 0.08;
     for (const side of [-1, 1] as const) {
       const x = side * (HALF_TRACK + 0.18);
-      for (let z = 2; z < len - 2; z += 8) {
+      for (let z = 4; z < len - 2; z += 16) {
         const post = MeshBuilder.CreateBox(
           "rail-post",
           { width: 0.08, height: gh, depth: 0.08 },

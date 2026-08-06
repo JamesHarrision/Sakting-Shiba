@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { MaterialsRegistry } from "../../assets/MaterialsRegistry";
 import { PropAssetLoader } from "../../world/props/PropAssetLoader";
 import { PropFactory } from "../../world/props/PropFactory";
+import { getPropEntry } from "../../config/visual/props.config";
 
 function createFactory(): {
   scene: Scene;
@@ -52,6 +53,10 @@ const ALL_PROP_KINDS = [
 ] as const;
 
 describe("PropFactory", () => {
+  it("keeps the 107-node building source asset out of the runtime budget", () => {
+    expect(getPropEntry("building").useAsset).toBe(false);
+  });
+
   it("builds every kind procedurally and disposes them cleanly", () => {
     const { scene, factory, dispose } = createFactory();
     const parent = new TransformNode("props", scene);

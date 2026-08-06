@@ -37,9 +37,7 @@ export class PropAssetLoader {
   }
 
   async prefetchAll(): Promise<void> {
-    for (const kind of PROP_KINDS) {
-      await this.prefetch(kind);
-    }
+    await Promise.all(PROP_KINDS.map((kind) => this.prefetch(kind)));
   }
 
   getState(kind: PropKind): PropAssetState {
@@ -68,7 +66,7 @@ export class PropAssetLoader {
     const entry = getPropEntry(kind);
 
     // Procedural-only kinds (no asset path) never attempt a load
-    if (!entry.assetPath) {
+    if (!entry.assetPath || !entry.useAsset) {
       this.states.set(kind, "missing");
       return;
     }

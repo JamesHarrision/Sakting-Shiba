@@ -31,7 +31,7 @@ if (!canvas) {
   throw new Error("Game canvas was not found.");
 }
 
-const engine = new Engine(canvas, true, {
+const engine = new Engine(canvas, false, {
   preserveDrawingBuffer: false,
   stencil: true,
 });

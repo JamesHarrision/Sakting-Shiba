@@ -30,6 +30,8 @@ export interface WorldVisualConfig {
   ambientIntensity: number;
   directionalIntensity: number;
   shadowMapSize: number;
+  enableDynamicShadows: boolean;
+  debugHudRefreshSeconds: number;
   showDebugHud: boolean;
   enableVignette: boolean;
   enableBloom: boolean;
@@ -43,7 +45,7 @@ export const WORLD_VISUAL_CONFIG: WorldVisualConfig = {
   rooftopEdgeHalfWidth: 1.4,
   guardRailHeight: 0.35,
   trackChunkLength: 32,
-  trackChunkCount: 6,
+  trackChunkCount: 5,
   spawnObstacleColor: "#D05545",
   spawnPickupColor: "#E8B048",
   cameraHeight: 5.6,
@@ -55,13 +57,15 @@ export const WORLD_VISUAL_CONFIG: WorldVisualConfig = {
   cameraTargetYOffset: 1.15,
   fogMode: "exp2",
   fogStart: 45,
-  fogEnd: 110,
+  fogEnd: 96,
   fogDensity: 0.012,
   skyTopColor: "#8EA4B8",
   skyHorizonColor: "#E8C9A0",
   ambientIntensity: 0.45,
   directionalIntensity: 1.05,
   shadowMapSize: 1024,
+  enableDynamicShadows: false,
+  debugHudRefreshSeconds: 0.5,
   showDebugHud: true,
   enableVignette: false,
   enableBloom: false,

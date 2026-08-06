@@ -31,6 +31,7 @@ export class RunScene {
 
   create(engine: Engine, loader: PlayerAssetLoader): Scene {
     this.scene = new Scene(engine);
+    this.scene.skipPointerMovePicking = true;
     this.materials = new MaterialsRegistry(this.scene);
     this.playerAssetLoader = loader;
     this.playerAssetLoader.setScene(this.scene);
@@ -63,8 +64,10 @@ export class RunScene {
   }
 
   async startAssetLoad(): Promise<void> {
-    await this.worldController.startAssetLoad();
-    await this.playerVisual.startModelLoad();
+    await Promise.all([
+      this.worldController.startAssetLoad(),
+      this.playerVisual.startModelLoad()
+    ]);
 
     if (this.playerVisual.isModelLoaded) {
       for (const mesh of this.playerVisual.getShadowMeshes()) {
@@ -91,22 +94,27 @@ export class RunScene {
       playerState: playerSnap.state
     });
 
-    this.fpsFrames++;
+    this.fpsFrames += 1;
     this.fpsTime += deltaSeconds;
-    if (this.fpsTime >= 0.5) {
+    if (this.fpsTime >= WORLD_VISUAL_CONFIG.debugHudRefreshSeconds) {
       this.currentFps = this.fpsFrames / this.fpsTime;
       this.fpsFrames = 0;
       this.fpsTime = 0;
-    }
 
-    const activeMeshes = this.scene.meshes.filter((mesh) => mesh.isEnabled()).length;
-    this.debugHud.update(this.currentFps, playerSnap, activeMeshes, {
-      catLoaded: this.playerVisual.catAssetLoaded,
-      boardLoaded: this.playerVisual.boardAssetLoaded,
-      isModelFull: this.playerVisual.isModelLoaded,
-      catState: this.playerAssetLoader.getLoadState("player.cat"),
-      boardState: this.playerAssetLoader.getLoadState("player.skateboard")
-    }, this.worldController.trackManager.getDebugStats());
+      this.debugHud.update(
+        this.currentFps,
+        playerSnap,
+        this.scene.getActiveMeshes().length,
+        {
+          catLoaded: this.playerVisual.catAssetLoaded,
+          boardLoaded: this.playerVisual.boardAssetLoaded,
+          isModelFull: this.playerVisual.isModelLoaded,
+          catState: this.playerAssetLoader.getLoadState("player.cat"),
+          boardState: this.playerAssetLoader.getLoadState("player.skateboard")
+        },
+        this.worldController.trackManager.getDebugStats()
+      );
+    }
   }
 
   reset(): void {

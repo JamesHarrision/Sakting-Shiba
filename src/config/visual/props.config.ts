@@ -37,6 +37,8 @@ export interface PropAssetEntry {
   readonly kind: PropKind;
   /** Expected GLB path (relative to public/), or null for procedural-only kinds. */
   readonly assetPath: string | null;
+  /** False for source assets that exceed the runtime draw-call budget. */
+  readonly useAsset: boolean;
   /** Applied to the GLB instance; unused for procedural builders. */
   readonly calibration: PropCalibration;
 }
@@ -57,6 +59,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   {
     kind: "box",
     assetPath: `${PROPS_ASSET_DIR}/box.glb`,
+    useAsset: true,
     calibration: {
       position: { x: 0, y: 0, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
@@ -66,6 +69,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   {
     kind: "building",
     assetPath: `${PROPS_ASSET_DIR}/building.glb`,
+    useAsset: false,
     calibration: {
       position: { x: 0, y: 0, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0.5 },
@@ -75,6 +79,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   {
     kind: "cone",
     assetPath: `${PROPS_ASSET_DIR}/cone.glb`,
+    useAsset: true,
     calibration: {
       position: { x: 0, y: 0.013, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
@@ -84,6 +89,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   {
     kind: "dumpster",
     assetPath: `${PROPS_ASSET_DIR}/dumpster.glb`,
+    useAsset: true,
     calibration: {
       position: { x: 0, y: 0.525, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
@@ -93,6 +99,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   {
     kind: "fence",
     assetPath: `${PROPS_ASSET_DIR}/fence.glb`,
+    useAsset: true,
     calibration: {
       position: { x: 0, y: 0.238, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
@@ -102,6 +109,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   {
     kind: "lamp",
     assetPath: `${PROPS_ASSET_DIR}/lamp.glb`,
+    useAsset: true,
     calibration: {
       position: { x: 0, y: 0, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
@@ -111,6 +119,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   {
     kind: "plant",
     assetPath: `${PROPS_ASSET_DIR}/plant.glb`,
+    useAsset: true,
     calibration: {
       position: { x: 0, y: 0.2, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
@@ -120,6 +129,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   {
     kind: "tree",
     assetPath: `${PROPS_ASSET_DIR}/tree.glb`,
+    useAsset: true,
     calibration: {
       position: { x: 0, y: 1.14, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
@@ -130,6 +140,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   {
     kind: "vent",
     assetPath: null,
+    useAsset: false,
     calibration: {
       position: { x: 0, y: 0, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
@@ -139,6 +150,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   {
     kind: "ac",
     assetPath: null,
+    useAsset: false,
     calibration: {
       position: { x: 0, y: 0, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
@@ -148,6 +160,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   {
     kind: "pipe",
     assetPath: null,
+    useAsset: false,
     calibration: {
       position: { x: 0, y: 0, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
@@ -157,6 +170,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   {
     kind: "antenna",
     assetPath: null,
+    useAsset: false,
     calibration: {
       position: { x: 0, y: 0, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
@@ -166,6 +180,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   {
     kind: "warningLight",
     assetPath: null,
+    useAsset: false,
     calibration: {
       position: { x: 0, y: 0, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
@@ -175,6 +190,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   {
     kind: "barrier",
     assetPath: null,
+    useAsset: false,
     calibration: {
       position: { x: 0, y: 0, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },

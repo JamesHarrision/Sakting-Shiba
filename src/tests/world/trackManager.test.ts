@@ -52,6 +52,7 @@ describe("TrackManager", () => {
     expect(manager.getDebugStats().activeChunks).toBe(
       WORLD_VISUAL_CONFIG.trackChunkCount
     );
+    expect(scene.meshes.length).toBeLessThan(240);
 
     // Scroll enough to recycle every chunk several times
     for (let i = 0; i < 500; i += 1) {
@@ -155,7 +156,7 @@ describe("TrackManager", () => {
 
       // No forward end visible: track extends past the fog zone
       const furthestEnd = Math.max(...ranges.map((r) => r.end));
-      expect(furthestEnd).toBeGreaterThan(110);
+      expect(furthestEnd).toBeGreaterThan(WORLD_VISUAL_CONFIG.fogEnd);
 
       // A chunk may only jump forward (recycle) when it was fully behind
       // the camera in the previous frame — this catches whole-track jolts.

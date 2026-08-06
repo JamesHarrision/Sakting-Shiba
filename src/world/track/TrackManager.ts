@@ -92,7 +92,7 @@ export class TrackManager {
       CFG.spawnPickupColor
     );
 
-    this.obstaclePool = new SpawnItemPool(scene, 24, () => {
+    this.obstaclePool = new SpawnItemPool(scene, 16, () => {
       const mesh = MeshBuilder.CreateBox(
         "debug-obstacle",
         { width: 1.4, height: 1.8, depth: 1.2 },
@@ -102,7 +102,7 @@ export class TrackManager {
       return mesh;
     });
 
-    this.pickupPool = new SpawnItemPool(scene, 24, () => {
+    this.pickupPool = new SpawnItemPool(scene, 16, () => {
       const mesh = MeshBuilder.CreateSphere(
         "debug-pickup",
         { diameter: 0.55, segments: 8 },
