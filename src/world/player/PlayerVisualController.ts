@@ -137,6 +137,9 @@ export class PlayerVisualController {
       case "jumping":
         this.animateJumping(dt);
         break;
+      case "flying":
+        this.animateFlying(dt);
+        break;
       case "crouching":
         this.animateCrouching(dt);
         break;
@@ -230,6 +233,20 @@ export class PlayerVisualController {
     } else {
       this.player.boardRoot.rotation.x = (this.currentTilt * Math.PI) / 180;
       this.player.catBody.scaling.y = 1.3 * this.squatScale;
+    }
+  }
+
+  private animateFlying(dt: number): void {
+    this.wasAirborne = true;
+    this.recoverPose(dt);
+    this.currentBob += dt * 12;
+    const bank = Math.sin(this.currentBob) * 4;
+    this.currentTilt = this.smoothTo(this.currentTilt, -6, 8, dt);
+    this.visualRoot.rotation.z = (bank * Math.PI) / 180;
+    if (this.isModelLoaded) {
+      this.modelView.boardMount.rotation.x = (this.currentTilt * Math.PI) / 180;
+    } else {
+      this.player.boardRoot.rotation.x = (this.currentTilt * Math.PI) / 180;
     }
   }
 

@@ -20,6 +20,9 @@ import { PlayerController } from "./gameplay/PlayerController";
 import { RunStateStore } from "./gameplay/RunStateStore";
 import { RunGameplaySystem } from "./gameplay/RunGameplaySystem";
 import { RunnerCollisionSystem } from "./gameplay/RunnerCollisionSystem";
+import { PowerUpSystem } from "./gameplay/PowerUpSystem";
+import { PlayerProfileStore } from "./gameplay/PlayerProfileStore";
+import type { CollectibleItemType } from "./contracts/spawn-pattern.contract";
 import { KeyboardInputController } from "./input/KeyboardInputController";
 import { PlayerColliderController } from "./player/PlayerColliderController";
 import { RunScene } from "./scenes/RunScene";
@@ -43,6 +46,8 @@ const runStateStore = new RunStateStore(eventBus);
 const playerController = new PlayerController(eventBus);
 const runGameplay = new RunGameplaySystem();
 const collisionSystem = new RunnerCollisionSystem();
+const powerUps = new PowerUpSystem(eventBus);
+const profileStore = new PlayerProfileStore(getLocalStorage());
 const playerColliderController = new PlayerColliderController({
   groundY: WORLD_VISUAL_CONFIG.trackThickness
 });
@@ -80,11 +85,16 @@ engine.runRenderLoop(() => {
 
   const runStateBeforeFrame = runStateStore.getSnapshot();
   if (deltaSeconds > 0 && !pauseWasToggled && !runStateBeforeFrame.isGameOver) {
+    powerUps.update(deltaSeconds);
+    const powerUpSnapshot = powerUps.getSnapshot();
+    playerController.setFlightHeight(
+      powerUpSnapshot.flightHeight > 0 ? powerUpSnapshot.flightHeight : null
+    );
     const gameplayFrame = runGameplay.update(
       deltaSeconds,
       runScene.getTrackManager().getScrollDistance()
     );
-    currentSpeed = gameplayFrame.speed;
+    currentSpeed = gameplayFrame.speed * powerUpSnapshot.speedMultiplier;
     runStateStore.setSpeed(currentSpeed);
     runScene.getTrackManager().submitSpawnRequests(gameplayFrame.spawnRequests);
 
@@ -112,16 +122,37 @@ engine.runRenderLoop(() => {
   );
 
   if (!runStateStore.getSnapshot().isGameOver && deltaSeconds > 0) {
+    const powerUpSnapshot = powerUps.getSnapshot();
+    if (powerUpSnapshot.collectionDistance > 0) {
+      const nearbyCoinIds = runScene
+        .getTrackManager()
+        .getActiveItems()
+        .filter(
+          (item) =>
+            item.type === "coin" &&
+            Math.abs(item.worldZ) <= powerUpSnapshot.collectionDistance
+        )
+        .map((item) => item.id);
+      for (const itemId of nearbyCoinIds) {
+        collectWorldItem(itemId, "coin");
+      }
+    }
+
     const collisionFrame = collisionSystem.update(
       playerColliderSnapshot,
-      runScene.getTrackManager().getActiveItems()
+      runScene.getTrackManager().getActiveItems(),
+      powerUpSnapshot.isInvulnerable
     );
+    for (const collectible of collisionFrame.collectibles) {
+      collectWorldItem(collectible.itemId, collectible.type);
+    }
     if (collisionFrame.obstacleHit) {
       runScene.getTrackManager().consumeItem(collisionFrame.obstacleHit.itemId);
       playerController.kill();
       playerVisualSnapshot = playerController.getVisualSnapshot();
       runStateStore.endRun();
       runGameplay.pause();
+      powerUps.pause();
       currentSpeed = 0;
     }
   }
@@ -159,6 +190,7 @@ function restartRun(): void {
   playerController.reset();
   runGameplay.reset();
   collisionSystem.reset();
+  powerUps.reset();
   playerColliderController.reset();
   playerVisualSnapshot = playerController.getVisualSnapshot();
   playerColliderSnapshot = playerColliderController.getSnapshot();
@@ -178,12 +210,37 @@ function syncPauseState(): void {
     clock.pause();
     runStateStore.pauseRun();
     runGameplay.pause();
+    powerUps.pause();
   } else {
     clock.resume();
     if (!runStateStore.getSnapshot().isGameOver) {
       runStateStore.resumeRun();
       runGameplay.resume();
+      powerUps.resume();
     }
+  }
+}
+
+function collectWorldItem(itemId: number, type: CollectibleItemType): void {
+  if (!runScene.getTrackManager().consumeItem(itemId)) return;
+  if (type === "coin") {
+    runStateStore.collectCoins(1);
+    profileStore.addCoins(1);
+    return;
+  }
+
+  const powerUpType = type.replace("powerup_", "") as
+    | "magnet"
+    | "rush"
+    | "rocket";
+  powerUps.activate(powerUpType);
+}
+
+function getLocalStorage(): Storage | undefined {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
   }
 }
 

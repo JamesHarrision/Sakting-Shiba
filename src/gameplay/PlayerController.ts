@@ -36,6 +36,7 @@ export class PlayerController {
   private laneSwitchStartX = 0;
   private laneSwitchElapsed = 0;
   private crouchTimeRemaining = 0;
+  private flightHeight: number | null = null;
 
   constructor(
     private readonly eventBus: GameEventBus,
@@ -53,10 +54,17 @@ export class PlayerController {
     const safeDeltaSeconds = Math.max(0, deltaSeconds);
 
     this.handleLaneInput(input);
-    this.handleJumpInput(input);
-    this.handleCrouchInput(input);
+    if (this.flightHeight === null) {
+      this.handleJumpInput(input);
+      this.handleCrouchInput(input);
+    }
     this.updateLaneSwitch(safeDeltaSeconds);
-    this.updateVerticalMovement(safeDeltaSeconds);
+    if (this.flightHeight === null) {
+      this.updateVerticalMovement(safeDeltaSeconds);
+    } else {
+      this.y = smoothTo(this.y, this.flightHeight, 6, safeDeltaSeconds);
+      this.verticalVelocity = 0;
+    }
     this.updateCrouch(safeDeltaSeconds);
     this.setState(this.resolveState());
 
@@ -71,6 +79,7 @@ export class PlayerController {
     this.laneSwitchStartX = this.x;
     this.laneSwitchElapsed = 0;
     this.crouchTimeRemaining = 0;
+    this.flightHeight = null;
     this.setState("running");
   }
 
@@ -78,6 +87,14 @@ export class PlayerController {
     if (this.state === "dead") return;
     this.eventBus.emit("PLAYER_HIT", { shielded: false });
     this.setState("dead");
+  }
+
+  setFlightHeight(height: number | null): void {
+    this.flightHeight = height === null ? null : Math.max(0, height);
+    if (this.flightHeight !== null) {
+      this.crouchTimeRemaining = 0;
+      this.verticalVelocity = 0;
+    }
   }
 
   getSnapshot(): PlayerControllerSnapshot {
@@ -234,6 +251,9 @@ export class PlayerController {
   }
 
   private resolveState(): PlayerState {
+    if (this.flightHeight !== null) {
+      return "flying";
+    }
     if (!this.isGrounded()) {
       return "jumping";
     }
@@ -285,4 +305,8 @@ function lerp(from: number, to: number, progress: number): number {
 
 function smoothStep(progress: number): number {
   return progress * progress * (3 - 2 * progress);
+}
+
+function smoothTo(current: number, target: number, speed: number, dt: number): number {
+  return current + (target - current) * (1 - Math.exp(-speed * dt));
 }

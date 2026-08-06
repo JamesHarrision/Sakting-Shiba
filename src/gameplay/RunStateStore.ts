@@ -27,20 +27,20 @@ export class RunStateStore {
     }
 
     this.state.distance += deltaDistance;
-    this.state.score = Math.floor(this.state.distance) + this.state.fish * 10;
+    this.state.score = Math.floor(this.state.distance) + this.state.coins * 10;
     this.emitScoreChanged();
   }
 
-  collectFish(amount = 1): void {
+  collectCoins(amount = 1): void {
     if (this.state.isGameOver || amount <= 0) {
       return;
     }
 
-    this.state.fish += amount;
+    this.state.coins += amount;
     this.state.score += amount * 10;
-    this.eventBus.emit("FISH_COLLECTED", {
+    this.eventBus.emit("COIN_COLLECTED", {
       amount,
-      totalFish: this.state.fish
+      totalCoins: this.state.coins
     });
     this.emitScoreChanged();
   }
@@ -48,7 +48,7 @@ export class RunStateStore {
   setSpeed(speed: number): void {
     this.state.speed = Math.min(
       Math.max(speed, 0),
-      RUN_SPEED_CONFIG.maximumSpeed
+      RUN_SPEED_CONFIG.maximumSpeed * 1.5
     );
   }
 
@@ -74,7 +74,7 @@ export class RunStateStore {
     return {
       distance: 0,
       score: 0,
-      fish: 0,
+      coins: 0,
       speed: RUN_SPEED_CONFIG.initialSpeed,
       combo: 0,
       isGameOver: false

@@ -12,27 +12,27 @@ describe("RunStateStore", () => {
     expect(store.getSnapshot()).toMatchObject({
       distance: 0,
       score: 0,
-      fish: 0,
+      coins: 0,
       speed: 10,
       combo: 0,
       isGameOver: false
     });
   });
 
-  it("updates fish and score through events", () => {
+  it("updates coins and score through events", () => {
     const eventBus = new GameEventBus();
-    const fishHandler = vi.fn();
+    const coinHandler = vi.fn();
     const scoreHandler = vi.fn();
     const store = new RunStateStore(eventBus);
 
-    eventBus.on("FISH_COLLECTED", fishHandler);
+    eventBus.on("COIN_COLLECTED", coinHandler);
     eventBus.on("SCORE_CHANGED", scoreHandler);
     store.startRun();
-    store.collectFish(3);
+    store.collectCoins(3);
 
-    expect(store.getSnapshot().fish).toBe(3);
+    expect(store.getSnapshot().coins).toBe(3);
     expect(store.getSnapshot().score).toBe(30);
-    expect(fishHandler).toHaveBeenCalledWith({ amount: 3, totalFish: 3 });
+    expect(coinHandler).toHaveBeenCalledWith({ amount: 3, totalCoins: 3 });
     expect(scoreHandler).toHaveBeenLastCalledWith({
       score: 30,
       distance: 0,

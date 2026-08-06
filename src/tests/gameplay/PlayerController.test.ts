@@ -6,6 +6,20 @@ import { PlayerController } from "../../gameplay/PlayerController";
 import { createEmptyInputSnapshot } from "../../input/inputSnapshot";
 
 describe("PlayerController", () => {
+  it("enters rocket flight and falls after the effect ends", () => {
+    const controller = new PlayerController(new GameEventBus());
+    controller.setFlightHeight(4);
+    for (let index = 0; index < 60; index += 1) {
+      controller.update(createEmptyInputSnapshot(), 1 / 60);
+    }
+    expect(controller.getSnapshot().state).toBe("flying");
+    expect(controller.getSnapshot().y).toBeGreaterThan(3.8);
+
+    controller.setFlightHeight(null);
+    controller.update(createEmptyInputSnapshot(), 1 / 60);
+    expect(controller.getSnapshot().state).toBe("jumping");
+  });
+
   it("starts on the center lane", () => {
     const controller = new PlayerController(new GameEventBus());
 

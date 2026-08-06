@@ -36,6 +36,8 @@ interface ActiveSpawnItem {
   readonly width: number;
   readonly height: number;
   readonly depth: number;
+  readonly centerX: number;
+  worldZ: number;
 }
 
 /** Maps gameplay obstacle assetIds to real prop kinds (fallback: debug box). */
@@ -241,27 +243,18 @@ export class TrackManager {
     return {
       activeChunks: this.chunks.length,
       pooledChunks: 0,
-      activeObstacles: this.obstaclePool.activeCount,
-      activePickups: this.pickupPool.activeCount,
+      activeObstacles: this.activeItems.filter((item) => isObstacleItem(item.type)).length,
+      activePickups: this.activeItems.filter((item) => !isObstacleItem(item.type)).length,
       speed: this.lastSpeed,
       furthestChunkZ: furthestEnd
     };
   }
 
   getActiveItems(): readonly Readonly<WorldItemSnapshot>[] {
-    return this.activeItems.map((item) =>
-      Object.freeze({
-        id: item.id,
-        type: item.type,
-        lane: item.lane,
-        centerX: LANE_X_POSITIONS[item.lane],
-        centerY: item.centerY,
-        worldZ: item.localZ + this.trackRoot.position.z,
-        width: item.width,
-        height: item.height,
-        depth: item.depth
-      })
-    );
+    for (const item of this.activeItems) {
+      item.worldZ = item.localZ + this.trackRoot.position.z;
+    }
+    return this.activeItems;
   }
 
   consumeItem(itemId: number): boolean {
@@ -339,7 +332,9 @@ export class TrackManager {
         centerY,
         width: rule.width,
         height: rule.height,
-        depth: rule.depth
+        depth: rule.depth,
+        centerX: laneX,
+        worldZ
       });
       return;
     }
@@ -366,7 +361,9 @@ export class TrackManager {
       centerY,
       width: rule.width,
       height: rule.height,
-      depth: rule.depth
+      depth: rule.depth,
+      centerX: laneX,
+      worldZ
     });
   }
 
@@ -389,6 +386,17 @@ export class TrackManager {
       this.warnPoolExhausted("pickup");
       return;
     }
+    const colorByType: Readonly<Record<CollectibleItemType, string>> = {
+      coin: "#FFD45A",
+      powerup_magnet: "#F05A78",
+      powerup_rush: "#53E0C1",
+      powerup_rocket: "#64A8FF"
+    };
+    mesh.material = this.materials.createMaterial(
+      `spawn.${type}`,
+      colorByType[type]
+    );
+    mesh.scaling.setAll(type === "coin" ? 1 : 1.35);
     this.activeItems.push({
       release: () => this.pickupPool.release(mesh),
       localZ: worldZ,
@@ -398,7 +406,9 @@ export class TrackManager {
       centerY,
       width: 0.55,
       height: 0.55,
-      depth: 0.55
+      depth: 0.55,
+      centerX: LANE_X_POSITIONS[lane],
+      worldZ
     });
   }
 

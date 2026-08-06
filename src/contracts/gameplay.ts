@@ -4,6 +4,7 @@ export type PlayerState =
   | "running"
   | "switching_lane"
   | "jumping"
+  | "flying"
   | "crouching"
   | "hit"
   | "dead";
@@ -11,7 +12,7 @@ export type PlayerState =
 export interface RunState {
   distance: number;
   score: number;
-  fish: number;
+  coins: number;
   speed: number;
   combo: number;
   isGameOver: boolean;

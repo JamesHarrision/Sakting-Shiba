@@ -43,7 +43,7 @@ export const SPAWN_PATTERNS: readonly SpawnPattern[] = Object.freeze([
         offsetZ: 0,
         lanes: ["obstacle_box", "obstacle_dumpster", "empty"]
       },
-      { offsetZ: 8, lanes: ["empty", "coin", "empty"] },
+      { offsetZ: 8, lanes: ["empty", "powerup_rush", "empty"] },
       {
         offsetZ: 16,
         lanes: ["empty", "obstacle_fence", "obstacle_dumpster"]
@@ -64,7 +64,7 @@ export const SPAWN_PATTERNS: readonly SpawnPattern[] = Object.freeze([
         offsetZ: 10,
         lanes: ["empty", "obstacle_fence", "obstacle_box"]
       },
-      { offsetZ: 20, lanes: ["empty", "coin", "empty"] }
+      { offsetZ: 20, lanes: ["empty", "powerup_rocket", "empty"] }
     ]
   },
   {

@@ -9,7 +9,9 @@ export const GAME_EVENTS = {
   PLAYER_HIT: "PLAYER_HIT",
   PLAYER_STATE_CHANGED: "PLAYER_STATE_CHANGED",
   LANE_CHANGED: "LANE_CHANGED",
-  FISH_COLLECTED: "FISH_COLLECTED",
+  COIN_COLLECTED: "COIN_COLLECTED",
+  POWERUP_ACTIVATED: "POWERUP_ACTIVATED",
+  POWERUP_EXPIRED: "POWERUP_EXPIRED",
   SCORE_CHANGED: "SCORE_CHANGED",
   RUN_ENDED: "RUN_ENDED"
 } as const;
@@ -25,7 +27,9 @@ export interface GameEventPayloads {
   PLAYER_HIT: { shielded: boolean };
   PLAYER_STATE_CHANGED: { from: PlayerState; to: PlayerState };
   LANE_CHANGED: { from: LaneIndex; to: LaneIndex };
-  FISH_COLLECTED: { amount: number; totalFish: number };
+  COIN_COLLECTED: { amount: number; totalCoins: number };
+  POWERUP_ACTIVATED: { type: "magnet" | "rush" | "rocket"; duration: number };
+  POWERUP_EXPIRED: { type: "magnet" | "rush" | "rocket" };
   SCORE_CHANGED: { score: number; distance: number; combo: number };
   RUN_ENDED: { state: RunState };
 }
