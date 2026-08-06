@@ -128,6 +128,10 @@ export class RunScene {
     return this.worldController.trackManager;
   }
 
+  applyCosmetics(catColor: string, boardColor: string): void {
+    this.playerVisual.applyCosmetics(catColor, boardColor);
+  }
+
   toggleDebugHud(): void {
     this.debugHud.toggle();
   }

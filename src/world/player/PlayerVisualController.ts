@@ -2,6 +2,9 @@ import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import type { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { Scene } from "@babylonjs/core/scene";
+import { Color3 } from "@babylonjs/core/Maths/math.color";
+import { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial";
+import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 
 import type { MaterialsRegistry } from "../../assets/MaterialsRegistry";
 import type { PlayerAssetLoader } from "../../assets/PlayerAssetLoader";
@@ -46,6 +49,8 @@ export class PlayerVisualController {
   private catLoaded = false;
   private boardLoaded = false;
   private disposed = false;
+  private catColor = "#E87848";
+  private boardColor = "#68503E";
 
   constructor(
     scene: Scene,
@@ -93,6 +98,7 @@ export class PlayerVisualController {
         this.player.setEnabled(true);
         this.playerRig.setVisualLoadState("fallback");
       }
+      this.applyCosmetics(this.catColor, this.boardColor);
     });
 
     return this.modelLoadPromise;
@@ -116,6 +122,29 @@ export class PlayerVisualController {
 
   getShadowMeshes(): readonly AbstractMesh[] {
     return this.isModelLoaded ? this.modelView.allMeshes : this.player.meshes;
+  }
+
+  applyCosmetics(catColor: string, boardColor: string): void {
+    this.catColor = catColor;
+    this.boardColor = boardColor;
+    this.tintMeshes(
+      [
+        this.player.catBody,
+        this.player.catHead,
+        this.player.leftEar,
+        this.player.rightEar,
+        this.player.tail,
+        ...this.modelView.catMeshes
+      ],
+      catColor
+    );
+    this.tintMeshes(
+      [
+        ...this.player.meshes.filter((mesh) => mesh.name.startsWith("board-")),
+        ...this.modelView.boardMeshes
+      ],
+      boardColor
+    );
   }
 
   applySnapshot(snapshot: Readonly<PlayerVisualSnapshot>): void {
@@ -361,5 +390,16 @@ export class PlayerVisualController {
   private smoothTo(current: number, target: number, speed: number, dt: number): number {
     const blend = 1 - Math.exp(-speed * dt);
     return current + (target - current) * blend;
+  }
+
+  private tintMeshes(meshes: readonly AbstractMesh[], hex: string): void {
+    const color = Color3.FromHexString(hex);
+    for (const mesh of meshes) {
+      if (mesh.material instanceof PBRMaterial) {
+        mesh.material.albedoColor.copyFrom(color);
+      } else if (mesh.material instanceof StandardMaterial) {
+        mesh.material.diffuseColor.copyFrom(color);
+      }
+    }
   }
 }

@@ -66,7 +66,7 @@ export const WORLD_VISUAL_CONFIG: WorldVisualConfig = {
   shadowMapSize: 1024,
   enableDynamicShadows: false,
   debugHudRefreshSeconds: 0.5,
-  showDebugHud: true,
+  showDebugHud: false,
   enableVignette: false,
   enableBloom: false,
 };

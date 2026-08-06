@@ -1,7 +1,5 @@
 import { Engine } from "@babylonjs/core/Engines/engine";
 import "@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent";
-// Babylon.js shader side-effect imports (required with tree-shaken core imports).
-// Without these, shaders fall back to HTTP fetch and get the HTML page instead.
 import "@babylonjs/core/Shaders/default.fragment";
 import "@babylonjs/core/Shaders/default.vertex";
 import "@babylonjs/core/Shaders/pbr.fragment";
@@ -12,33 +10,38 @@ import "@babylonjs/core/Shaders/postprocess.vertex";
 import "@babylonjs/core/Shaders/rgbdDecode.fragment";
 import "@babylonjs/core/Shaders/rgbdEncode.fragment";
 
-import type { PlayerVisualSnapshot } from "./contracts/player-visual.contract";
+import { PlayerAssetLoader } from "./assets/PlayerAssetLoader";
+import { WORLD_VISUAL_CONFIG } from "./config/visual/world-visual.config";
+import {
+  getCosmetic,
+  type CosmeticItem
+} from "./config/visual/cosmeticsConfig";
 import type { PlayerColliderSnapshot } from "./contracts/player-collider.contract";
+import type { PlayerVisualSnapshot } from "./contracts/player-visual.contract";
+import type { CollectibleItemType } from "./contracts/spawn-pattern.contract";
 import { GameEventBus } from "./events/GameEventBus";
 import { GameClock } from "./gameplay/GameClock";
 import { PlayerController } from "./gameplay/PlayerController";
-import { RunStateStore } from "./gameplay/RunStateStore";
+import { PlayerProfileStore } from "./gameplay/PlayerProfileStore";
+import { PowerUpSystem } from "./gameplay/PowerUpSystem";
 import { RunGameplaySystem } from "./gameplay/RunGameplaySystem";
 import { RunnerCollisionSystem } from "./gameplay/RunnerCollisionSystem";
-import { PowerUpSystem } from "./gameplay/PowerUpSystem";
-import { PlayerProfileStore } from "./gameplay/PlayerProfileStore";
-import type { CollectibleItemType } from "./contracts/spawn-pattern.contract";
+import { RunStateStore } from "./gameplay/RunStateStore";
+import { TutorialSystem } from "./gameplay/TutorialSystem";
 import { KeyboardInputController } from "./input/KeyboardInputController";
 import { PlayerColliderController } from "./player/PlayerColliderController";
 import { RunScene } from "./scenes/RunScene";
-import { WORLD_VISUAL_CONFIG } from "./config/visual/world-visual.config";
-import { PlayerAssetLoader } from "./assets/PlayerAssetLoader";
+import { GameUiController } from "./ui/GameUiController";
 import "./style.css";
 
-const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
+type AppMode = "menu" | "countdown" | "running" | "paused" | "gameover" | "store";
 
-if (!canvas) {
-  throw new Error("Game canvas was not found.");
-}
+const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
+if (!canvas) throw new Error("Game canvas was not found.");
 
 const engine = new Engine(canvas, false, {
   preserveDrawingBuffer: false,
-  stencil: true,
+  stencil: true
 });
 const eventBus = new GameEventBus();
 const clock = new GameClock();
@@ -53,172 +56,148 @@ const playerColliderController = new PlayerColliderController({
 });
 const keyboardInput = new KeyboardInputController(window);
 
-// Create scene first so we have a Scene for the loader
 const runScene = new RunScene();
 const playerAssetLoader = new PlayerAssetLoader();
 const scene = runScene.create(engine, playerAssetLoader);
-void runScene.startAssetLoad();
 
+let appMode: AppMode = "menu";
+let storeReturnMode: AppMode = "menu";
+let countdownRemaining = 0;
+let displayedCountdown = -1;
+let startWithTutorial = false;
+let isDisposed = false;
+let hudElapsed = 0;
 let playerVisualSnapshot = playerController.getVisualSnapshot();
 let playerColliderSnapshot: Readonly<PlayerColliderSnapshot> =
   playerColliderController.update(playerController.getSnapshot());
-let currentSpeed = runGameplay.getCurrentSpeed();
-let isManualPaused = false;
-let isWindowFocused = document.hasFocus();
-let isDisposed = false;
+let currentSpeed = 0;
+let ui!: GameUiController;
+
+const tutorial = new TutorialSystem(
+  eventBus,
+  (step) => ui?.showTutorial(step),
+  () => profileStore.completeTutorial()
+);
+
+ui = new GameUiController({
+  onStart: () => beginCountdown(!profileStore.getSnapshot().tutorialCompleted),
+  onPause: pauseRun,
+  onResume: resumeRun,
+  onRestart: () => beginCountdown(!profileStore.getSnapshot().tutorialCompleted),
+  onMenu: showMainMenu,
+  onOpenStore: openStore,
+  onCloseStore: closeStore,
+  onCosmeticAction: handleCosmeticAction,
+  onTutorialSkip: () => tutorial.skip(),
+  onInput: (action) => keyboardInput.queueAction(action)
+});
 
 keyboardInput.attach();
+clock.pause();
 runStateStore.startRun();
-syncPauseState();
+applyEquippedCosmetics();
+ui.showMenu(profileStore.getSnapshot());
+void runScene.startAssetLoad().then(applyEquippedCosmetics);
 
 engine.runRenderLoop(() => {
+  const rawDeltaSeconds = Math.min(Math.max(engine.getDeltaTime() / 1000, 0), 0.1);
   const inputSnapshot = keyboardInput.getSnapshot();
-  const pauseWasToggled = inputSnapshot.pause;
 
-  if (pauseWasToggled) {
-    isManualPaused = !isManualPaused;
-    keyboardInput.reset();
-    syncPauseState();
+  if (inputSnapshot.pause) {
+    if (appMode === "running") pauseRun();
+    else if (appMode === "paused") resumeRun();
   }
 
-  const deltaSeconds = clock.tick(engine.getDeltaTime());
+  if (appMode === "countdown") updateCountdown(rawDeltaSeconds);
 
-  const runStateBeforeFrame = runStateStore.getSnapshot();
-  if (deltaSeconds > 0 && !pauseWasToggled && !runStateBeforeFrame.isGameOver) {
+  const deltaSeconds = appMode === "running"
+    ? clock.tick(engine.getDeltaTime())
+    : 0;
+
+  if (deltaSeconds > 0) {
     powerUps.update(deltaSeconds);
     const powerUpSnapshot = powerUps.getSnapshot();
     playerController.setFlightHeight(
       powerUpSnapshot.flightHeight > 0 ? powerUpSnapshot.flightHeight : null
     );
+
     const gameplayFrame = runGameplay.update(
       deltaSeconds,
       runScene.getTrackManager().getScrollDistance()
     );
-    currentSpeed = gameplayFrame.speed * powerUpSnapshot.speedMultiplier;
+    const tutorialMultiplier = tutorial.isActive ? 0.72 : 1;
+    currentSpeed =
+      gameplayFrame.speed * powerUpSnapshot.speedMultiplier * tutorialMultiplier;
     runStateStore.setSpeed(currentSpeed);
     runScene.getTrackManager().submitSpawnRequests(gameplayFrame.spawnRequests);
 
     const playerSnapshot = playerController.update(inputSnapshot, deltaSeconds);
     playerVisualSnapshot = playerController.getVisualSnapshot();
     playerColliderSnapshot = playerColliderController.update(playerSnapshot);
-
-    const runState = runStateStore.getSnapshot();
-    runStateStore.addDistance(runState.speed * deltaSeconds);
+    runStateStore.addDistance(currentSpeed * deltaSeconds);
   }
 
-  const frameSnapshot: PlayerVisualSnapshot = clock.isPaused()
+  const isPaused = appMode === "paused";
+  const frameSnapshot: PlayerVisualSnapshot = isPaused
     ? { ...playerVisualSnapshot, state: "paused" }
     : playerVisualSnapshot;
-  const cameraSnapshot = playerController.getCameraTargetSnapshot(
-    clock.isPaused()
-  );
+  const cameraSnapshot = playerController.getCameraTargetSnapshot(isPaused);
+  const presentationDelta = isPaused ? 0 : rawDeltaSeconds;
 
   runScene.update(
-    deltaSeconds,
+    presentationDelta,
     frameSnapshot,
     playerColliderSnapshot,
     cameraSnapshot,
-    currentSpeed
+    appMode === "running" ? currentSpeed : 0
   );
 
-  if (!runStateStore.getSnapshot().isGameOver && deltaSeconds > 0) {
-    const powerUpSnapshot = powerUps.getSnapshot();
-    if (powerUpSnapshot.collectionDistance > 0) {
-      const nearbyCoinIds = runScene
-        .getTrackManager()
-        .getActiveItems()
-        .filter(
-          (item) =>
-            item.type === "coin" &&
-            Math.abs(item.worldZ) <= powerUpSnapshot.collectionDistance
-        )
-        .map((item) => item.id);
-      for (const itemId of nearbyCoinIds) {
-        collectWorldItem(itemId, "coin");
-      }
-    }
-
-    const collisionFrame = collisionSystem.update(
-      playerColliderSnapshot,
-      runScene.getTrackManager().getActiveItems(),
-      powerUpSnapshot.isInvulnerable
-    );
-    for (const collectible of collisionFrame.collectibles) {
-      collectWorldItem(collectible.itemId, collectible.type);
-    }
-    if (collisionFrame.obstacleHit) {
-      runScene.getTrackManager().consumeItem(collisionFrame.obstacleHit.itemId);
-      playerController.kill();
-      playerVisualSnapshot = playerController.getVisualSnapshot();
-      runStateStore.endRun();
-      runGameplay.pause();
-      powerUps.pause();
-      currentSpeed = 0;
+  if (appMode === "running" && deltaSeconds > 0) {
+    processCollisions();
+    hudElapsed += deltaSeconds;
+    if (hudElapsed >= 0.1) {
+      hudElapsed = 0;
+      ui.updateHud(runStateStore.getSnapshot(), powerUps.getSnapshot());
     }
   }
+
   scene.render();
 });
 
-function handleResize(): void {
-  engine.resize();
-}
-
-function handleBlur(): void {
-  isWindowFocused = false;
-  keyboardInput.reset();
-  syncPauseState();
-}
-
-function handleFocus(): void {
-  isWindowFocused = true;
-  syncPauseState();
-}
-
-function handleGameShortcut(event: KeyboardEvent): void {
-  if (event.code === "F3") {
-    event.preventDefault();
-    runScene.toggleDebugHud();
-    runScene.togglePlayerRigDebug();
-  } else if (event.code === "KeyR") {
-    event.preventDefault();
-    restartRun();
+function processCollisions(): void {
+  const powerUpSnapshot = powerUps.getSnapshot();
+  if (powerUpSnapshot.collectionDistance > 0) {
+    const nearbyCoinIds = runScene
+      .getTrackManager()
+      .getActiveItems()
+      .filter(
+        (item) =>
+          item.type === "coin" &&
+          Math.abs(item.worldZ) <= powerUpSnapshot.collectionDistance
+      )
+      .map((item) => item.id);
+    for (const itemId of nearbyCoinIds) collectWorldItem(itemId, "coin");
   }
-}
 
-function restartRun(): void {
-  keyboardInput.reset();
-  playerController.reset();
-  runGameplay.reset();
-  collisionSystem.reset();
-  powerUps.reset();
-  playerColliderController.reset();
+  const collisionFrame = collisionSystem.update(
+    playerColliderSnapshot,
+    runScene.getTrackManager().getActiveItems(),
+    powerUpSnapshot.isInvulnerable || tutorial.isActive
+  );
+  for (const collectible of collisionFrame.collectibles) {
+    collectWorldItem(collectible.itemId, collectible.type);
+  }
+
+  if (!collisionFrame.obstacleHit) return;
+  runScene.getTrackManager().consumeItem(collisionFrame.obstacleHit.itemId);
+  playerController.kill();
   playerVisualSnapshot = playerController.getVisualSnapshot();
-  playerColliderSnapshot = playerColliderController.getSnapshot();
-  runStateStore.startRun();
-  currentSpeed = runGameplay.getCurrentSpeed();
-  runScene.reset();
-}
-
-function syncPauseState(): void {
-  const shouldPause = isManualPaused || !isWindowFocused;
-
-  if (shouldPause === clock.isPaused()) {
-    return;
-  }
-
-  if (shouldPause) {
-    clock.pause();
-    runStateStore.pauseRun();
-    runGameplay.pause();
-    powerUps.pause();
-  } else {
-    clock.resume();
-    if (!runStateStore.getSnapshot().isGameOver) {
-      runStateStore.resumeRun();
-      runGameplay.resume();
-      powerUps.resume();
-    }
-  }
+  runStateStore.endRun();
+  runGameplay.pause();
+  powerUps.pause();
+  currentSpeed = 0;
+  appMode = "gameover";
+  ui.showGameOver(runStateStore.getSnapshot(), profileStore.getSnapshot());
 }
 
 function collectWorldItem(itemId: number, type: CollectibleItemType): void {
@@ -228,12 +207,140 @@ function collectWorldItem(itemId: number, type: CollectibleItemType): void {
     profileStore.addCoins(1);
     return;
   }
+  powerUps.activate(type.replace("powerup_", "") as "magnet" | "rush" | "rocket");
+}
 
-  const powerUpType = type.replace("powerup_", "") as
-    | "magnet"
-    | "rush"
-    | "rocket";
-  powerUps.activate(powerUpType);
+function beginCountdown(withTutorial: boolean): void {
+  prepareRun();
+  startWithTutorial = withTutorial;
+  countdownRemaining = 3;
+  displayedCountdown = 3;
+  appMode = "countdown";
+  ui.showCountdown(3);
+}
+
+function updateCountdown(deltaSeconds: number): void {
+  countdownRemaining = Math.max(0, countdownRemaining - deltaSeconds);
+  const nextDisplay = Math.ceil(countdownRemaining);
+  if (nextDisplay !== displayedCountdown && nextDisplay > 0) {
+    displayedCountdown = nextDisplay;
+    ui.showCountdown(nextDisplay);
+  }
+  if (countdownRemaining > 0) return;
+
+  appMode = "running";
+  clock.resume();
+  runGameplay.resume();
+  powerUps.resume();
+  ui.showRunning();
+  ui.updateHud(runStateStore.getSnapshot(), powerUps.getSnapshot());
+  if (startWithTutorial) tutorial.start();
+}
+
+function prepareRun(): void {
+  keyboardInput.reset();
+  tutorial.cancel();
+  playerController.reset();
+  runGameplay.reset();
+  collisionSystem.reset();
+  powerUps.reset();
+  playerColliderController.reset();
+  playerVisualSnapshot = playerController.getVisualSnapshot();
+  playerColliderSnapshot = playerColliderController.getSnapshot();
+  runStateStore.startRun();
+  currentSpeed = runGameplay.getCurrentSpeed();
+  hudElapsed = 0;
+  runScene.reset();
+  clock.pause();
+}
+
+function pauseRun(): void {
+  if (appMode !== "running") return;
+  appMode = "paused";
+  clock.pause();
+  runStateStore.pauseRun();
+  runGameplay.pause();
+  powerUps.pause();
+  keyboardInput.reset();
+  ui.showPaused();
+}
+
+function resumeRun(): void {
+  if (appMode !== "paused") return;
+  appMode = "running";
+  clock.resume();
+  runStateStore.resumeRun();
+  runGameplay.resume();
+  powerUps.resume();
+  ui.showRunning();
+}
+
+function showMainMenu(): void {
+  tutorial.cancel();
+  appMode = "menu";
+  currentSpeed = 0;
+  clock.pause();
+  runGameplay.pause();
+  powerUps.pause();
+  keyboardInput.reset();
+  ui.showMenu(profileStore.getSnapshot());
+}
+
+function openStore(): void {
+  storeReturnMode = appMode;
+  if (appMode === "running") pauseRun();
+  appMode = "store";
+  clock.pause();
+  runGameplay.pause();
+  powerUps.pause();
+  ui.showStore(profileStore.getSnapshot());
+}
+
+function closeStore(): void {
+  if (storeReturnMode === "gameover") {
+    appMode = "gameover";
+    ui.showGameOver(runStateStore.getSnapshot(), profileStore.getSnapshot());
+  } else {
+    showMainMenu();
+  }
+}
+
+function handleCosmeticAction(item: CosmeticItem): void {
+  const profile = profileStore.getSnapshot();
+  if (!profile.ownedCosmetics.includes(item.id)) {
+    if (!profileStore.purchase(item.id, item.price)) return;
+  }
+  profileStore.equip(item.category, item.id);
+  applyEquippedCosmetics();
+  ui.showStore(profileStore.getSnapshot());
+}
+
+function applyEquippedCosmetics(): void {
+  const profile = profileStore.getSnapshot();
+  runScene.applyCosmetics(
+    getCosmetic(profile.equippedCat).color,
+    getCosmetic(profile.equippedBoard).color
+  );
+}
+
+function handleResize(): void {
+  engine.resize();
+}
+
+function handleBlur(): void {
+  keyboardInput.reset();
+  if (appMode === "running") pauseRun();
+}
+
+function handleGameShortcut(event: KeyboardEvent): void {
+  if (event.code === "F3") {
+    event.preventDefault();
+    runScene.toggleDebugHud();
+    runScene.togglePlayerRigDebug();
+  } else if (event.code === "KeyR" && appMode !== "menu" && appMode !== "store") {
+    event.preventDefault();
+    beginCountdown(!profileStore.getSnapshot().tutorialCompleted);
+  }
 }
 
 function getLocalStorage(): Storage | undefined {
@@ -245,16 +352,14 @@ function getLocalStorage(): Storage | undefined {
 }
 
 function disposeGame(): void {
-  if (isDisposed) {
-    return;
-  }
-
+  if (isDisposed) return;
   isDisposed = true;
   window.removeEventListener("resize", handleResize);
   window.removeEventListener("blur", handleBlur);
-  window.removeEventListener("focus", handleFocus);
   window.removeEventListener("keydown", handleGameShortcut);
   window.removeEventListener("beforeunload", disposeGame);
+  tutorial.dispose();
+  ui.dispose();
   keyboardInput.detach();
   engine.stopRenderLoop();
   runScene.dispose();
@@ -263,10 +368,7 @@ function disposeGame(): void {
 
 window.addEventListener("resize", handleResize);
 window.addEventListener("blur", handleBlur);
-window.addEventListener("focus", handleFocus);
 window.addEventListener("keydown", handleGameShortcut);
 window.addEventListener("beforeunload", disposeGame);
 
-if (import.meta.hot) {
-  import.meta.hot.dispose(disposeGame);
-}
+if (import.meta.hot) import.meta.hot.dispose(disposeGame);

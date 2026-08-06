@@ -3,6 +3,14 @@ import { describe, expect, it, vi } from "vitest";
 import { KeyboardInputController } from "../../input/KeyboardInputController";
 
 describe("KeyboardInputController", () => {
+  it("accepts one-shot actions from touch controls", () => {
+    const input = new KeyboardInputController();
+    input.queueAction("jump");
+    input.queueAction("crouch");
+    expect(input.getSnapshot()).toMatchObject({ jump: true, crouch: true });
+    expect(input.getSnapshot()).toMatchObject({ jump: false, crouch: false });
+  });
+
   it("emits one-shot lane input until the key is released", () => {
     const input = new KeyboardInputController();
 

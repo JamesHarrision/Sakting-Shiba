@@ -21,6 +21,7 @@ const ONE_SHOT_ACTIONS = new Set<InputAction>([
   "moveLeft",
   "moveRight",
   "jump",
+  "crouch",
   "pause"
 ]);
 
@@ -82,7 +83,7 @@ export class KeyboardInputController {
       snapshot[action] = true;
     }
 
-    snapshot.crouch = this.isActionPressed("crouch");
+    snapshot.crouch = snapshot.crouch || this.isActionPressed("crouch");
 
     for (const action of ONE_SHOT_ACTIONS) {
       this.pendingActions.delete(action);
@@ -107,6 +108,10 @@ export class KeyboardInputController {
 
   handleKeyUp(code: string): void {
     this.pressedKeys.delete(code);
+  }
+
+  queueAction(action: Exclude<InputAction, "pause">): void {
+    this.pendingActions.add(action);
   }
 
   private isActionPressed(action: InputAction): boolean {
