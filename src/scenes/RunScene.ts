@@ -14,6 +14,7 @@ import { DebugHud } from "../ui/debug/DebugHud";
 import { WorldController } from "../world/WorldController";
 import { RunnerCameraController } from "../world/camera/RunnerCameraController";
 import { PlayerVisualController } from "../world/player/PlayerVisualController";
+import { FrameRateStats } from "../performance/FrameRateStats";
 
 export class RunScene {
   private scene!: Scene;
@@ -26,7 +27,7 @@ export class RunScene {
   private materials!: MaterialsRegistry;
   private fpsFrames = 0;
   private fpsTime = 0;
-  private currentFps = 60;
+  private readonly frameRateStats = new FrameRateStats();
   private isPlayerRigDebugVisible = false;
 
   create(engine: Engine, loader: PlayerAssetLoader): Scene {
@@ -97,12 +98,18 @@ export class RunScene {
     this.fpsFrames += 1;
     this.fpsTime += deltaSeconds;
     if (this.fpsTime >= WORLD_VISUAL_CONFIG.debugHudRefreshSeconds) {
-      this.currentFps = this.fpsFrames / this.fpsTime;
+      this.frameRateStats.addWindow(this.fpsFrames, this.fpsTime);
       this.fpsFrames = 0;
       this.fpsTime = 0;
+      const performance = this.frameRateStats.getSnapshot();
 
       this.debugHud.update(
-        this.currentFps,
+        {
+          ...performance,
+          hardwareScalingLevel: this.scene
+            .getEngine()
+            .getHardwareScalingLevel()
+        },
         playerSnap,
         this.scene.getActiveMeshes().length,
         {
@@ -118,6 +125,9 @@ export class RunScene {
   }
 
   reset(): void {
+    this.fpsFrames = 0;
+    this.fpsTime = 0;
+    this.frameRateStats.reset();
     this.playerRig.reset();
     this.playerVisual.reset();
     this.cameraController.reset();
