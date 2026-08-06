@@ -84,6 +84,10 @@ export class SpawnDirector {
     this.random.reset(this.seed);
   }
 
+  getNextStartZ(): number | null {
+    return this.nextStartZ;
+  }
+
   private selectWeighted(
     eligiblePatterns: readonly SpawnPattern[]
   ): SpawnPattern {

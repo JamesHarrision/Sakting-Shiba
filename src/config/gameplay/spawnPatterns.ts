@@ -7,9 +7,9 @@ export const SPAWN_PATTERNS: readonly SpawnPattern[] = Object.freeze([
     weight: 5,
     length: 16,
     rows: [
-      { offsetZ: 0, lanes: ["empty", "debug_pickup", "empty"] },
-      { offsetZ: 6, lanes: ["empty", "debug_pickup", "empty"] },
-      { offsetZ: 12, lanes: ["empty", "debug_pickup", "empty"] }
+      { offsetZ: 0, lanes: ["empty", "coin", "empty"] },
+      { offsetZ: 6, lanes: ["empty", "coin", "empty"] },
+      { offsetZ: 12, lanes: ["empty", "coin", "empty"] }
     ]
   },
   {
@@ -18,8 +18,8 @@ export const SPAWN_PATTERNS: readonly SpawnPattern[] = Object.freeze([
     weight: 4,
     length: 14,
     rows: [
-      { offsetZ: 0, lanes: ["debug_obstacle", "empty", "empty"] },
-      { offsetZ: 8, lanes: ["empty", "debug_pickup", "empty"] }
+      { offsetZ: 0, lanes: ["obstacle_box", "empty", "empty"] },
+      { offsetZ: 8, lanes: ["empty", "coin", "empty"] }
     ]
   },
   {
@@ -28,9 +28,9 @@ export const SPAWN_PATTERNS: readonly SpawnPattern[] = Object.freeze([
     weight: 4,
     length: 20,
     rows: [
-      { offsetZ: 0, lanes: ["empty", "debug_obstacle", "empty"] },
-      { offsetZ: 7, lanes: ["debug_pickup", "empty", "empty"] },
-      { offsetZ: 14, lanes: ["empty", "empty", "debug_obstacle"] }
+      { offsetZ: 0, lanes: ["empty", "obstacle_dumpster", "empty"] },
+      { offsetZ: 7, lanes: ["coin", "empty", "empty"] },
+      { offsetZ: 14, lanes: ["empty", "empty", "obstacle_fence"] }
     ]
   },
   {
@@ -41,12 +41,12 @@ export const SPAWN_PATTERNS: readonly SpawnPattern[] = Object.freeze([
     rows: [
       {
         offsetZ: 0,
-        lanes: ["debug_obstacle", "debug_obstacle", "empty"]
+        lanes: ["obstacle_box", "obstacle_dumpster", "empty"]
       },
-      { offsetZ: 8, lanes: ["empty", "debug_pickup", "empty"] },
+      { offsetZ: 8, lanes: ["empty", "coin", "empty"] },
       {
         offsetZ: 16,
-        lanes: ["empty", "debug_obstacle", "debug_obstacle"]
+        lanes: ["empty", "obstacle_fence", "obstacle_dumpster"]
       }
     ]
   },
@@ -58,13 +58,13 @@ export const SPAWN_PATTERNS: readonly SpawnPattern[] = Object.freeze([
     rows: [
       {
         offsetZ: 0,
-        lanes: ["debug_obstacle", "debug_obstacle", "empty"]
+        lanes: ["obstacle_dumpster", "obstacle_box", "empty"]
       },
       {
         offsetZ: 10,
-        lanes: ["empty", "debug_obstacle", "debug_obstacle"]
+        lanes: ["empty", "obstacle_fence", "obstacle_box"]
       },
-      { offsetZ: 20, lanes: ["empty", "debug_pickup", "empty"] }
+      { offsetZ: 20, lanes: ["empty", "coin", "empty"] }
     ]
   },
   {
@@ -75,20 +75,20 @@ export const SPAWN_PATTERNS: readonly SpawnPattern[] = Object.freeze([
     rows: [
       {
         offsetZ: 0,
-        lanes: ["debug_obstacle", "debug_obstacle", "empty"]
+        lanes: ["obstacle_box", "obstacle_dumpster", "empty"]
       },
       {
         offsetZ: 8,
-        lanes: ["empty", "debug_obstacle", "debug_obstacle"]
+        lanes: ["empty", "obstacle_fence", "obstacle_dumpster"]
       },
       {
         offsetZ: 16,
-        lanes: ["debug_obstacle", "debug_obstacle", "empty"]
+        lanes: ["obstacle_fence", "obstacle_box", "empty"]
       },
-      { offsetZ: 24, lanes: ["empty", "debug_pickup", "empty"] },
+      { offsetZ: 24, lanes: ["empty", "powerup_magnet", "empty"] },
       {
         offsetZ: 28,
-        lanes: ["empty", "debug_obstacle", "debug_obstacle"]
+        lanes: ["empty", "obstacle_dumpster", "obstacle_box"]
       }
     ]
   }

@@ -1,7 +1,18 @@
 export type SpawnItemType =
-  | "debug_obstacle"
-  | "debug_pickup"
+  | "obstacle_box"
+  | "obstacle_fence"
+  | "obstacle_dumpster"
+  | "coin"
+  | "powerup_magnet"
+  | "powerup_rush"
+  | "powerup_rocket"
   | "empty";
+
+export type ObstacleItemType = Extract<SpawnItemType, `obstacle_${string}`>;
+export type CollectibleItemType = Exclude<
+  SpawnItemType,
+  ObstacleItemType | "empty"
+>;
 
 export type SpawnLanes = readonly [
   SpawnItemType,

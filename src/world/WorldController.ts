@@ -2,7 +2,6 @@ import type { Scene } from "@babylonjs/core/scene";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { MaterialsRegistry } from "../assets/MaterialsRegistry";
 import { TrackManager } from "./track/TrackManager";
-import { SpawnPlaceholderFeeder } from "./track/SpawnPlaceholderFeeder";
 import { PropAssetLoader } from "./props/PropAssetLoader";
 import { PropFactory } from "./props/PropFactory";
 import { LightingRig } from "./lighting/LightingRig";
@@ -13,7 +12,6 @@ export class WorldController {
   readonly lighting: LightingRig;
   private readonly propLoader: PropAssetLoader;
   private readonly propFactory: PropFactory;
-  private readonly spawnFeeder: SpawnPlaceholderFeeder;
 
   constructor(scene: Scene, materials: MaterialsRegistry) {
     this.root = new TransformNode("world-root", scene);
@@ -22,7 +20,6 @@ export class WorldController {
     this.propLoader.setScene(scene);
     this.propFactory = new PropFactory(scene, materials, this.propLoader);
     this.trackManager = new TrackManager(scene, materials);
-    this.spawnFeeder = new SpawnPlaceholderFeeder(this.trackManager);
   }
 
   build(): void {
@@ -38,12 +35,10 @@ export class WorldController {
 
   update(deltaSeconds: number, speed: number): void {
     this.trackManager.update(deltaSeconds, speed);
-    this.spawnFeeder.update();
   }
 
   reset(): void {
     this.trackManager.reset();
-    this.spawnFeeder.reset();
   }
 
   dispose(): void {

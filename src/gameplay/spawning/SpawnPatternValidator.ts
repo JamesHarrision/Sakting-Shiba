@@ -5,8 +5,13 @@ import type {
 } from "../../contracts/spawn-pattern.contract";
 
 const VALID_ITEM_TYPES = new Set<SpawnItemType>([
-  "debug_obstacle",
-  "debug_pickup",
+  "obstacle_box",
+  "obstacle_fence",
+  "obstacle_dumpster",
+  "coin",
+  "powerup_magnet",
+  "powerup_rush",
+  "powerup_rocket",
   "empty"
 ]);
 
@@ -92,7 +97,7 @@ export function validateSpawnPatterns(
       }
       if (
         pattern.minimumDifficulty === 0 &&
-        row.lanes.filter((item) => item === "debug_obstacle").length > 1
+        row.lanes.filter((item) => item.startsWith("obstacle_")).length > 1
       ) {
         issues.push({
           patternId: pattern.id,

@@ -47,6 +47,9 @@ export class PlayerController {
   }
 
   update(input: InputSnapshot, deltaSeconds: number): PlayerControllerSnapshot {
+    if (this.state === "dead") {
+      return this.getSnapshot();
+    }
     const safeDeltaSeconds = Math.max(0, deltaSeconds);
 
     this.handleLaneInput(input);
@@ -69,6 +72,12 @@ export class PlayerController {
     this.laneSwitchElapsed = 0;
     this.crouchTimeRemaining = 0;
     this.setState("running");
+  }
+
+  kill(): void {
+    if (this.state === "dead") return;
+    this.eventBus.emit("PLAYER_HIT", { shielded: false });
+    this.setState("dead");
   }
 
   getSnapshot(): PlayerControllerSnapshot {

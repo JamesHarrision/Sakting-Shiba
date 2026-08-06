@@ -30,7 +30,7 @@ describe("spawn pattern configuration", () => {
       rows: [
         {
           offsetZ: 0,
-          lanes: ["debug_obstacle", "debug_obstacle", "debug_obstacle"]
+          lanes: ["obstacle_box", "obstacle_fence", "obstacle_dumpster"]
         }
       ]
     };

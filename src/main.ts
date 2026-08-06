@@ -18,6 +18,8 @@ import { GameEventBus } from "./events/GameEventBus";
 import { GameClock } from "./gameplay/GameClock";
 import { PlayerController } from "./gameplay/PlayerController";
 import { RunStateStore } from "./gameplay/RunStateStore";
+import { RunGameplaySystem } from "./gameplay/RunGameplaySystem";
+import { RunnerCollisionSystem } from "./gameplay/RunnerCollisionSystem";
 import { KeyboardInputController } from "./input/KeyboardInputController";
 import { PlayerColliderController } from "./player/PlayerColliderController";
 import { RunScene } from "./scenes/RunScene";
@@ -39,6 +41,8 @@ const eventBus = new GameEventBus();
 const clock = new GameClock();
 const runStateStore = new RunStateStore(eventBus);
 const playerController = new PlayerController(eventBus);
+const runGameplay = new RunGameplaySystem();
+const collisionSystem = new RunnerCollisionSystem();
 const playerColliderController = new PlayerColliderController({
   groundY: WORLD_VISUAL_CONFIG.trackThickness
 });
@@ -53,7 +57,7 @@ void runScene.startAssetLoad();
 let playerVisualSnapshot = playerController.getVisualSnapshot();
 let playerColliderSnapshot: Readonly<PlayerColliderSnapshot> =
   playerColliderController.update(playerController.getSnapshot());
-let currentSpeed = runStateStore.getSnapshot().speed;
+let currentSpeed = runGameplay.getCurrentSpeed();
 let isManualPaused = false;
 let isWindowFocused = document.hasFocus();
 let isDisposed = false;
@@ -74,14 +78,22 @@ engine.runRenderLoop(() => {
 
   const deltaSeconds = clock.tick(engine.getDeltaTime());
 
-  if (deltaSeconds > 0 && !pauseWasToggled) {
+  const runStateBeforeFrame = runStateStore.getSnapshot();
+  if (deltaSeconds > 0 && !pauseWasToggled && !runStateBeforeFrame.isGameOver) {
+    const gameplayFrame = runGameplay.update(
+      deltaSeconds,
+      runScene.getTrackManager().getScrollDistance()
+    );
+    currentSpeed = gameplayFrame.speed;
+    runStateStore.setSpeed(currentSpeed);
+    runScene.getTrackManager().submitSpawnRequests(gameplayFrame.spawnRequests);
+
     const playerSnapshot = playerController.update(inputSnapshot, deltaSeconds);
     playerVisualSnapshot = playerController.getVisualSnapshot();
     playerColliderSnapshot = playerColliderController.update(playerSnapshot);
 
     const runState = runStateStore.getSnapshot();
     runStateStore.addDistance(runState.speed * deltaSeconds);
-    currentSpeed = runState.speed;
   }
 
   const frameSnapshot: PlayerVisualSnapshot = clock.isPaused()
@@ -98,6 +110,21 @@ engine.runRenderLoop(() => {
     cameraSnapshot,
     currentSpeed
   );
+
+  if (!runStateStore.getSnapshot().isGameOver && deltaSeconds > 0) {
+    const collisionFrame = collisionSystem.update(
+      playerColliderSnapshot,
+      runScene.getTrackManager().getActiveItems()
+    );
+    if (collisionFrame.obstacleHit) {
+      runScene.getTrackManager().consumeItem(collisionFrame.obstacleHit.itemId);
+      playerController.kill();
+      playerVisualSnapshot = playerController.getVisualSnapshot();
+      runStateStore.endRun();
+      runGameplay.pause();
+      currentSpeed = 0;
+    }
+  }
   scene.render();
 });
 
@@ -130,10 +157,13 @@ function handleGameShortcut(event: KeyboardEvent): void {
 function restartRun(): void {
   keyboardInput.reset();
   playerController.reset();
+  runGameplay.reset();
+  collisionSystem.reset();
   playerColliderController.reset();
   playerVisualSnapshot = playerController.getVisualSnapshot();
   playerColliderSnapshot = playerColliderController.getSnapshot();
   runStateStore.startRun();
+  currentSpeed = runGameplay.getCurrentSpeed();
   runScene.reset();
 }
 
@@ -147,9 +177,13 @@ function syncPauseState(): void {
   if (shouldPause) {
     clock.pause();
     runStateStore.pauseRun();
+    runGameplay.pause();
   } else {
     clock.resume();
-    runStateStore.resumeRun();
+    if (!runStateStore.getSnapshot().isGameOver) {
+      runStateStore.resumeRun();
+      runGameplay.resume();
+    }
   }
 }
 

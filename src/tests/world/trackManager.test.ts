@@ -13,8 +13,8 @@ import { TrackManager } from "../../world/track/TrackManager";
 import { PropAssetLoader } from "../../world/props/PropAssetLoader";
 import { PropFactory } from "../../world/props/PropFactory";
 
-const OBSTACLE: SpawnItemType = "debug_obstacle";
-const PICKUP: SpawnItemType = "debug_pickup";
+const OBSTACLE: SpawnItemType = "obstacle_box";
+const PICKUP: SpawnItemType = "coin";
 
 function createFixture(): {
   scene: Scene;

@@ -5,11 +5,18 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { MaterialsRegistry } from "../../assets/MaterialsRegistry";
 import { LANE_X_POSITIONS } from "../../config/gameplay/gameplayConfig";
 import { RUN_SPEED_CONFIG } from "../../config/gameplay/runSpeedConfig";
+import { OBSTACLE_RULES } from "../../config/gameplay/obstacleConfig";
 import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
 import type { SpawnRequest, TrackDebugStats } from "../../contracts/track.contract";
+import type {
+  CollectibleItemType,
+  ObstacleItemType
+} from "../../contracts/spawn-pattern.contract";
+import type { WorldItemSnapshot } from "../../contracts/world-item.contract";
 import type { PropFactory } from "../props/PropFactory";
 import type { PropKind } from "../../config/visual/props.config";
 import { SpawnItemPool } from "../pool/SpawnItemPool";
+import { isObstacleItem } from "../../gameplay/spawning/spawnItemGuards";
 import { StraightChunkA } from "./chunks/StraightChunkA";
 import { StraightChunkB } from "./chunks/StraightChunkB";
 import { StraightChunkC } from "./chunks/StraightChunkC";
@@ -22,14 +29,20 @@ interface ActiveSpawnItem {
   readonly release: () => void;
   /** Local Z in scroll space (world Z at placement) */
   readonly localZ: number;
+  readonly id: number;
+  readonly lane: 0 | 1 | 2;
+  readonly type: ObstacleItemType | CollectibleItemType;
+  readonly centerY: number;
+  readonly width: number;
+  readonly height: number;
+  readonly depth: number;
 }
 
 /** Maps gameplay obstacle assetIds to real prop kinds (fallback: debug box). */
-const OBSTACLE_KIND_BY_ASSET: Readonly<Record<string, PropKind>> = {
-  "obstacle.box": "box",
-  "obstacle.cone": "cone",
-  "obstacle.dumpster": "dumpster",
-  "obstacle.fence": "fence"
+const OBSTACLE_KIND: Readonly<Record<ObstacleItemType, PropKind>> = {
+  obstacle_box: "box",
+  obstacle_dumpster: "dumpster",
+  obstacle_fence: "fence"
 };
 
 export interface ChunkWorldRange {
@@ -71,7 +84,9 @@ export class TrackManager {
   private lastSpeed: number = RUN_SPEED_CONFIG.initialSpeed;
   private poolExhaustedWarned = false;
   private readonly reusePosition = new Vector3();
+  private readonly reuseScale = new Vector3();
   private props?: PropFactory;
+  private nextItemId = 1;
 
   constructor(
     private readonly scene: Scene,
@@ -169,10 +184,10 @@ export class TrackManager {
           if (item === "empty") {
             return;
           }
-          if (item === "debug_obstacle") {
-            this.placeObstacle(lane, worldZ);
-          } else if (item === "debug_pickup") {
-            this.placePickup(lane, worldZ);
+          if (isObstacleItem(item)) {
+            this.placeObstacle(lane as 0 | 1 | 2, worldZ, item);
+          } else {
+            this.placePickup(lane as 0 | 1 | 2, worldZ, item);
           }
         });
       }
@@ -190,6 +205,7 @@ export class TrackManager {
     }
     this.lastSpeed = RUN_SPEED_CONFIG.initialSpeed;
     this.poolExhaustedWarned = false;
+    this.nextItemId = 1;
   }
 
   pause(): void {
@@ -232,6 +248,30 @@ export class TrackManager {
     };
   }
 
+  getActiveItems(): readonly Readonly<WorldItemSnapshot>[] {
+    return this.activeItems.map((item) =>
+      Object.freeze({
+        id: item.id,
+        type: item.type,
+        lane: item.lane,
+        centerX: LANE_X_POSITIONS[item.lane],
+        centerY: item.centerY,
+        worldZ: item.localZ + this.trackRoot.position.z,
+        width: item.width,
+        height: item.height,
+        depth: item.depth
+      })
+    );
+  }
+
+  consumeItem(itemId: number): boolean {
+    const index = this.activeItems.findIndex((item) => item.id === itemId);
+    if (index < 0) return false;
+    this.activeItems[index].release();
+    this.activeItems.splice(index, 1);
+    return true;
+  }
+
   dispose(): void {
     this.releaseAllSpawnItems();
     this.obstaclePool.dispose();
@@ -268,31 +308,50 @@ export class TrackManager {
   }
 
   private placeObstacle(
-    lane: number,
+    lane: 0 | 1 | 2,
     worldZ: number,
-    assetId = "obstacle.box"
+    type: ObstacleItemType
   ): void {
-    const kind = OBSTACLE_KIND_BY_ASSET[assetId];
-    const laneX = LANE_X_POSITIONS[lane as keyof typeof LANE_X_POSITIONS];
+    const kind = OBSTACLE_KIND[type];
+    const rule = OBSTACLE_RULES[type];
+    const laneX = LANE_X_POSITIONS[lane];
+    const centerY = CFG.trackThickness + rule.centerYOffset;
+    const id = this.nextItemId++;
 
     // Prefer the real prop asset when it is loaded
     if (kind && this.props?.canRender(kind)) {
       const instance = this.props.create(
         kind,
         this.spawnRoot,
-        this.reusePosition.set(laneX, CFG.trackThickness, worldZ),
+        this.reusePosition.set(
+          laneX,
+          CFG.trackThickness + rule.visualYOffset,
+          worldZ
+        ),
         9000 + this.activeItems.length
       );
       this.activeItems.push({
         release: () => instance.dispose(),
-        localZ: worldZ
+        localZ: worldZ,
+        id,
+        lane,
+        type,
+        centerY,
+        width: rule.width,
+        height: rule.height,
+        depth: rule.depth
       });
       return;
     }
 
     const mesh = this.obstaclePool.acquire(
       this.spawnRoot,
-      this.reusePosition.set(laneX, CFG.trackThickness + 0.9, worldZ)
+      this.reusePosition.set(laneX, centerY, worldZ),
+      this.reuseScale.set(
+        rule.width / 1.4,
+        rule.height / 1.8,
+        rule.depth / 1.2
+      )
     );
     if (!mesh) {
       this.warnPoolExhausted("obstacle");
@@ -300,16 +359,29 @@ export class TrackManager {
     }
     this.activeItems.push({
       release: () => this.obstaclePool.release(mesh),
-      localZ: worldZ
+      localZ: worldZ,
+      id,
+      lane,
+      type,
+      centerY,
+      width: rule.width,
+      height: rule.height,
+      depth: rule.depth
     });
   }
 
-  private placePickup(lane: number, worldZ: number): void {
+  private placePickup(
+    lane: 0 | 1 | 2,
+    worldZ: number,
+    type: CollectibleItemType
+  ): void {
+    const id = this.nextItemId++;
+    const centerY = CFG.trackThickness + 0.65;
     const mesh = this.pickupPool.acquire(
       this.spawnRoot,
       this.reusePosition.set(
-        LANE_X_POSITIONS[lane as keyof typeof LANE_X_POSITIONS],
-        CFG.trackThickness + 0.4,
+        LANE_X_POSITIONS[lane],
+        centerY,
         worldZ
       )
     );
@@ -319,7 +391,14 @@ export class TrackManager {
     }
     this.activeItems.push({
       release: () => this.pickupPool.release(mesh),
-      localZ: worldZ
+      localZ: worldZ,
+      id,
+      lane,
+      type,
+      centerY,
+      width: 0.55,
+      height: 0.55,
+      depth: 0.55
     });
   }
 
