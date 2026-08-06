@@ -6,6 +6,7 @@ export interface WorldVisualConfig {
   trackThickness: number;
   laneMarkerWidth: number;
   rooftopEdgeHalfWidth: number;
+  cityFringeWidth: number;
   guardRailHeight: number;
   /** Infinite track: length of one recycled chunk */
   trackChunkLength: number;
@@ -43,6 +44,7 @@ export const WORLD_VISUAL_CONFIG: WorldVisualConfig = {
   trackThickness: 0.15,
   laneMarkerWidth: 0.06,
   rooftopEdgeHalfWidth: 1.4,
+  cityFringeWidth: 10,
   guardRailHeight: 0.35,
   trackChunkLength: 32,
   trackChunkCount: 5,

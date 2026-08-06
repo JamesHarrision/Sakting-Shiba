@@ -20,6 +20,15 @@ This file records the source and license of every runtime asset used by Catboard
 - Imported format: GLB
 - Intended use: street furniture, industrial details, rooftop props, and trucks
 
+## Kenney Skyboxes
+
+- Source: https://kenney.nl/assets/skyboxes
+- Author: Kenney
+- License: Creative Commons CC0 1.0 Universal
+- Downloaded: 2026-08-06
+- Imported file: `skybox-morning.png`
+- Intended use: lightweight equirectangular morning sky dome
+
 ## Player Models (Milestone 2)
 
 | Asset | Path | Source | License | Redistribution |

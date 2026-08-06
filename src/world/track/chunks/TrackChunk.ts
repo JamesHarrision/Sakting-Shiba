@@ -144,15 +144,15 @@ export abstract class TrackChunk {
     }
 
     // Rooftop base slabs (outside the track, props live on these)
-    const matRoof = materials.createMaterial("rooftop.surface", "#585560");
+    const matRoof = materials.createMaterial("rooftop.surface", "#615D66");
     for (const side of [-1, 1] as const) {
       const roof = MeshBuilder.CreateGround(
         "rooftop-base",
-        { width: CFG.rooftopEdgeHalfWidth, height: len + 0.06, subdivisions: 2 },
+        { width: CFG.cityFringeWidth, height: len + 0.06, subdivisions: 2 },
         scene
       );
       roof.position.set(
-        side * (HALF_TRACK + CFG.rooftopEdgeHalfWidth / 2 + 0.35),
+        side * (HALF_TRACK + CFG.cityFringeWidth / 2 + 0.35),
         0,
         len / 2
       );
