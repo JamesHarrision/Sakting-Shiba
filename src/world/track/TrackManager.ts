@@ -112,8 +112,8 @@ export class TrackManager {
     );
     const obstacleWarningMat = materials.createMaterial(
       "spawn.obstacleWarning",
-      "#FF654D",
-      0.82
+      "#FFB547",
+      0.88
     );
     obstacleWarningMat.emissiveColor = obstacleWarningMat.diffuseColor.scale(0.7);
     obstacleWarningMat.disableLighting = true;
@@ -131,7 +131,7 @@ export class TrackManager {
     this.obstacleWarningPool = new SpawnItemPool(scene, 16, () => {
       const mesh = MeshBuilder.CreateBox(
         "pooled-obstacle-warning",
-        { width: 1, height: 0.035, depth: 1 },
+        { width: 1, height: 0.025, depth: 0.09 },
         scene
       );
       mesh.material = obstacleWarningMat;
@@ -343,10 +343,10 @@ export class TrackManager {
       this.spawnRoot,
       this.reusePosition.set(
         laneX,
-        CFG.trackThickness + 0.018,
-        worldZ
+        CFG.trackThickness + 0.013,
+        worldZ - rule.depth / 2 - 0.4
       ),
-      this.reuseScale.set(rule.width * 1.22, 1, rule.depth * 1.85)
+      this.reuseScale.set(rule.width * 1.22, 1, 1)
     );
     if (!warning) this.warnPoolExhausted("obstacle warning");
     const releaseWarning = (): void => {

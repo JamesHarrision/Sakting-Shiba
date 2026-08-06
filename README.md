@@ -5,7 +5,7 @@ through a rooftop city. It is built with Babylon.js, TypeScript, Vite, and pnpm.
 
 ## Play loop
 
-- Dodge dumpsters by changing lane.
+- Dodge dumpsters by changing lane or with a well-timed high jump.
 - Jump over boxes and crouch under fences.
 - Collect coins for the persistent wallet.
 - Pick up Magnet, Rush, and Rocket powerups.

@@ -33,6 +33,7 @@ export const OBSTACLE_RULES: Readonly<Record<ObstacleItemType, ObstacleRule>> =
       height: 1.04,
       depth: 1.25,
       centerYOffset: 0.52,
-      visualYOffset: 0
+      visualYOffset: 0,
+      jumpClearance: 1.65
     })
   });

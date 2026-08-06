@@ -202,7 +202,10 @@ export class GameUiController {
     const copy: Readonly<Record<ObstacleItemType, [string, string]>> = {
       obstacle_box: ["Box impact", "Jump before the box reaches the board."],
       obstacle_fence: ["Fence impact", "Crouch to pass beneath the fence."],
-      obstacle_dumpster: ["Dumpster impact", "Switch to an open lane."]
+      obstacle_dumpster: [
+        "Dumpster impact",
+        "Switch lanes or clear it near the top of a jump."
+      ]
     };
     const [title, tip] = copy[hitType];
     return `<p class="crash-reason"><strong>${title}</strong><span>${tip}</span></p>`;

@@ -56,10 +56,22 @@ describe("RunnerCollisionSystem", () => {
     ).toBeNull();
   });
 
-  it("requires a lane dodge for a dumpster", () => {
+  it("allows a lane dodge or a high jump over a dumpster", () => {
     const system = new RunnerCollisionSystem();
     expect(system.update(STANDING_PLAYER, [item("obstacle_dumpster")]).obstacleHit)
       .not.toBeNull();
+    expect(
+      system.update(
+        { ...STANDING_PLAYER, centerY: 2.2 },
+        [item("obstacle_dumpster")]
+      ).obstacleHit
+    ).not.toBeNull();
+    expect(
+      system.update(
+        { ...STANDING_PLAYER, centerY: 2.55 },
+        [item("obstacle_dumpster")]
+      ).obstacleHit
+    ).toBeNull();
     expect(
       system.update(STANDING_PLAYER, [
         item("obstacle_dumpster", { centerX: 2.4, lane: 2 })

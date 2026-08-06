@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { MaterialsRegistry } from "../../assets/MaterialsRegistry";
 import { LANE_X_POSITIONS } from "../../config/gameplay/gameplayConfig";
+import { OBSTACLE_RULES } from "../../config/gameplay/obstacleConfig";
 import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
 import type { SpawnItemType } from "../../contracts/spawn-pattern.contract";
 import type { SpawnRequest } from "../../contracts/track.contract";
@@ -106,7 +107,11 @@ describe("TrackManager", () => {
       expect(obstacleWarning.getAbsolutePosition().x).toBeCloseTo(
         LANE_X_POSITIONS[0]
       );
-      expect(obstacleWarning.getAbsolutePosition().z).toBeCloseTo(20, 3);
+      expect(obstacleWarning.getAbsolutePosition().z).toBeCloseTo(
+        20 - OBSTACLE_RULES.obstacle_box.depth / 2 - 0.4,
+        3
+      );
+      expect(obstacleWarning.scaling.z).toBe(1);
     }
 
     // Scroll far enough for the covering chunk to recycle -> items pooled
