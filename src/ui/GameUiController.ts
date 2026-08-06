@@ -168,7 +168,10 @@ export class GameUiController {
       <section class="store-screen">
         <header><div><p class="game-kicker">Locker</p><h2>Choose your ride.</h2></div><p class="wallet-line"><span class="coin-mark"></span>${profile.coins}</p></header>
         <p class="store-feedback" aria-live="polite">${feedback}</p>
-        <div class="store-grid">${COSMETICS.map((item) => this.renderStoreItem(item, profile)).join("")}</div>
+        <div class="store-categories">
+          ${this.renderStoreCategory("cat", "Cat skins", profile)}
+          ${this.renderStoreCategory("board", "Skateboards", profile)}
+        </div>
         <button class="secondary-command store-close" data-action="close-store">Back</button>
       </section>`;
   }
@@ -218,12 +221,34 @@ export class GameUiController {
   private renderStoreItem(item: CosmeticItem, profile: Readonly<PlayerProfile>): string {
     const owned = profile.ownedCosmetics.includes(item.id);
     const equipped = item.category === "cat" ? profile.equippedCat === item.id : profile.equippedBoard === item.id;
-    const label = equipped ? "Equipped" : owned ? "Equip" : `Unlock · ${item.price}`;
+    const categoryLabel = item.category === "cat" ? "Cat" : "Board";
+    const label = equipped
+      ? `${categoryLabel} equipped`
+      : owned
+        ? `Equip ${categoryLabel.toLowerCase()}`
+        : `Unlock · ${item.price}`;
     return `<article class="store-item ${equipped ? "is-equipped" : ""}">
       <div class="cosmetic-swatch" style="--swatch:${item.color};--accent:${item.accent}"></div>
       <p>${item.category === "cat" ? "Cat skin" : "Skateboard"}</p><h3>${item.name}</h3>
       <button data-cosmetic="${item.id}" ${equipped ? "disabled" : ""}>${label}</button>
     </article>`;
+  }
+
+  private renderStoreCategory(
+    category: CosmeticItem["category"],
+    title: string,
+    profile: Readonly<PlayerProfile>
+  ): string {
+    const equippedId = category === "cat"
+      ? profile.equippedCat
+      : profile.equippedBoard;
+    const equippedName = COSMETICS.find((item) => item.id === equippedId)?.name;
+    const items = COSMETICS.filter((item) => item.category === category);
+
+    return `<section class="store-category">
+      <header><h3>${title}</h3><span>${equippedName ?? "Default"}</span></header>
+      <div class="store-grid">${items.map((item) => this.renderStoreItem(item, profile)).join("")}</div>
+    </section>`;
   }
 
   private renderCrashReason(hitType: ObstacleItemType | null): string {

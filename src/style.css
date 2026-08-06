@@ -524,6 +524,33 @@ button:focus-visible {
   gap: 12px;
 }
 
+.store-categories {
+  display: grid;
+  gap: 24px;
+}
+
+.store-category > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.store-category > header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.store-category > header span {
+  overflow: hidden;
+  color: var(--mint);
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .store-feedback {
   min-height: 20px;
   margin: -14px 0 14px;
