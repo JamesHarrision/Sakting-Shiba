@@ -11,7 +11,7 @@ export interface WorldVisualConfig {
   trackChunkLength: number;
   /** Infinite track: number of pooled chunks (covers camera + fog range) */
   trackChunkCount: number;
-  /** Debug spawn placeholder colors */
+  /** Procedural fallback colors for spawned gameplay items. */
   spawnObstacleColor: string;
   spawnPickupColor: string;
   cameraHeight: number;

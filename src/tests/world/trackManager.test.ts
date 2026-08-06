@@ -8,7 +8,6 @@ import { LANE_X_POSITIONS } from "../../config/gameplay/gameplayConfig";
 import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
 import type { SpawnItemType } from "../../contracts/spawn-pattern.contract";
 import type { SpawnRequest } from "../../contracts/track.contract";
-import { SpawnPlaceholderFeeder } from "../../world/track/SpawnPlaceholderFeeder";
 import { TrackManager } from "../../world/track/TrackManager";
 import { PropAssetLoader } from "../../world/props/PropAssetLoader";
 import { PropFactory } from "../../world/props/PropFactory";
@@ -86,10 +85,10 @@ describe("TrackManager", () => {
     expect(stats.activePickups).toBe(1);
 
     const obstacle = scene.meshes.find(
-      (m) => m.name === "debug-obstacle" && m.isEnabled()
+      (m) => m.name === "pooled-obstacle" && m.isEnabled()
     );
     const pickup = scene.meshes.find(
-      (m) => m.name === "debug-pickup" && m.isEnabled()
+      (m) => m.name === "pooled-pickup" && m.isEnabled()
     );
     expect(obstacle).toBeDefined();
     expect(pickup).toBeDefined();
@@ -220,33 +219,4 @@ describe("TrackManager", () => {
     dispose();
   });
 
-  it("placeholder feeder submits spawn requests as the track scrolls and resets", () => {
-    const { manager, dispose } = createFixture();
-    const feeder = new SpawnPlaceholderFeeder(manager);
-
-    // Before the first interval: nothing
-    expect(manager.getDebugStats().activeObstacles).toBe(0);
-    expect(manager.getDebugStats().activePickups).toBe(0);
-
-    // Scroll past the first spawn interval (40 units)
-    for (let i = 0; i < 10; i += 1) {
-      manager.update(0.5, 10);
-    }
-    feeder.update();
-    expect(
-      manager.getDebugStats().activeObstacles +
-        manager.getDebugStats().activePickups
-    ).toBeGreaterThan(0);
-
-    // Items are placed ahead of the player (world Z > 0) and scroll in
-    const stats = manager.getDebugStats();
-    expect(stats.activeObstacles + stats.activePickups).toBeGreaterThan(0);
-
-    // Reset clears everything and the feeder restarts
-    manager.reset();
-    feeder.reset();
-    expect(manager.getDebugStats().activeObstacles).toBe(0);
-    expect(manager.getDebugStats().activePickups).toBe(0);
-    dispose();
-  });
 });

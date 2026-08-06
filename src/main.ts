@@ -31,6 +31,7 @@ import { RunStateStore } from "./gameplay/RunStateStore";
 import { TutorialSystem } from "./gameplay/TutorialSystem";
 import { KeyboardInputController } from "./input/KeyboardInputController";
 import { PlayerColliderController } from "./player/PlayerColliderController";
+import { AdaptiveResolutionController } from "./performance/AdaptiveResolutionController";
 import { RunScene } from "./scenes/RunScene";
 import { GameUiController } from "./ui/GameUiController";
 import { GameFeelController } from "./ui/GameFeelController";
@@ -44,6 +45,9 @@ if (!canvas) throw new Error("Game canvas was not found.");
 const engine = new Engine(canvas, false, {
   preserveDrawingBuffer: false,
   stencil: true
+});
+const adaptiveResolution = new AdaptiveResolutionController((level) => {
+  engine.setHardwareScalingLevel(level);
 });
 const eventBus = new GameEventBus();
 const clock = new GameClock();
@@ -118,6 +122,7 @@ void runScene.startAssetLoad().then(applyEquippedCosmetics);
 
 engine.runRenderLoop(() => {
   const rawDeltaSeconds = Math.min(Math.max(engine.getDeltaTime() / 1000, 0), 0.1);
+  if (appMode === "running") adaptiveResolution.update(rawDeltaSeconds);
   const inputSnapshot = keyboardInput.getSnapshot();
 
   if (inputSnapshot.pause) {

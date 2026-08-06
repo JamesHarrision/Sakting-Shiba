@@ -63,12 +63,12 @@ export interface ChunkWorldRange {
  * - Chunks recycle individually (local Z += totalLength) only when their far
  *   edge has fully passed behind the camera — no whole-track jumps, so there is
  *   no visible jolt and never a visible track end.
- * - Debug spawn placeholders live in a scroll-space container (spawnRoot) so
- *   they scroll with the world and recycle independently of chunks.
+ * - Spawned obstacles and collectibles live in a scroll-space container
+ *   (spawnRoot) so they scroll with the world and recycle independently.
  */
 export class TrackManager {
   readonly root: TransformNode;
-  /** Scroll-space container for pooled debug spawn placeholders */
+  /** Scroll-space container for pooled obstacles and collectibles. */
   readonly spawnRoot: TransformNode;
 
   private readonly trackRoot: TransformNode;
@@ -112,7 +112,7 @@ export class TrackManager {
 
     this.obstaclePool = new SpawnItemPool(scene, 16, () => {
       const mesh = MeshBuilder.CreateBox(
-        "debug-obstacle",
+        "pooled-obstacle",
         { width: 1.4, height: 1.8, depth: 1.2 },
         scene
       );
@@ -122,7 +122,7 @@ export class TrackManager {
 
     this.pickupPool = new SpawnItemPool(scene, 16, () => {
       const mesh = MeshBuilder.CreateSphere(
-        "debug-pickup",
+        "pooled-pickup",
         { diameter: 0.55, segments: 8 },
         scene
       );
@@ -183,7 +183,7 @@ export class TrackManager {
     return this.scrollDistance;
   }
 
-  /** Renders world-space spawn requests as pooled debug placeholders. */
+  /** Renders world-space spawn requests as pooled gameplay items. */
   submitSpawnRequests(requests: readonly SpawnRequest[]): void {
     for (const request of requests) {
       for (const row of request.rows) {

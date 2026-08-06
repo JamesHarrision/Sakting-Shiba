@@ -1,29 +1,40 @@
 # Catboard Rush
 
-Low-poly 3D endless runner about a cat riding a skateboard through a city. The technical direction is Babylon.js, TypeScript, and Vite with simple kinematic gameplay instead of real skateboard physics.
+Catboard Rush is a low-poly 3D endless runner about a cat riding a skateboard
+through a rooftop city. It is built with Babylon.js, TypeScript, Vite, and pnpm.
 
-## Milestone 1
+## Play loop
 
-The current integration build contains:
+- Dodge dumpsters by changing lane.
+- Jump over boxes and crouch under fences.
+- Collect coins for the persistent wallet.
+- Pick up Magnet, Rush, and Rocket powerups.
+- Buy and equip cat skins and skateboards in the store.
+- Learn the controls through the first-run tutorial.
 
-- Vite + TypeScript + Babylon.js app shell.
-- A polished whitebox rooftop world with three readable lanes, fog, lighting, and a runner camera.
-- A procedural cat and skateboard placeholder with lane, jump, crouch, and landing feedback.
-- Keyboard controls, pause handling, and a toggleable debug HUD.
-- A PlayerRig hierarchy with asset mount points, model-independent colliders,
-  readonly visual snapshots, fallback state, and restart-safe lifecycle.
-- Typed gameplay contracts.
-- Typed `GameEventBus`.
-- `GameClock`.
-- `RunStateStore`.
-- Gameplay config and starter spawn pattern data.
-- Vitest unit tests for the gameplay foundation.
+The game includes a main menu, countdown, pause and result screens, responsive
+touch controls, sound effects, looping music, camera impact, landing feedback,
+speed effects, procedural asset fallback, and persistent cosmetic progression.
 
-Controls: `A/D` or arrow keys change lanes, `W`/Up/Space jumps, `S`/Down crouches,
-`P`/Escape pauses, `F3` toggles debug tools, and `R` resets the current run.
+## Controls
 
-PlayerRig integration details are documented in
-`docs/milestone-2-player-rig.md`.
+| Action | Keyboard | Touch |
+| --- | --- | --- |
+| Change lane | `A` / `D` or Left / Right | Left / Right buttons |
+| Jump | `W`, Up, or Space | Up button |
+| Crouch | `S` or Down | Down button |
+| Pause / resume | `P` or Escape | Pause button |
+| Restart | `R` | Run again button |
+| Performance HUD | `F3` | Keyboard only |
+
+## Performance
+
+The default preset disables dynamic shadows and post-processing, pools track
+chunks and gameplay items, keeps the procedural world below the tested mesh
+budget, and excludes the heavy development building model from production.
+Adaptive resolution targets 120 FPS while leaving the HTML interface sharp.
+Actual FPS is limited by the device and display refresh rate; press `F3` during
+a run to inspect the live result on the target machine.
 
 ## Commands
 
@@ -35,49 +46,17 @@ pnpm run test
 pnpm run build
 ```
 
-## Collaboration Ownership
+## Architecture
 
-Person 1 owns gameplay/core:
+- `src/gameplay/`: movement, run progression, collision, powerups, tutorial,
+  profile, and deterministic spawn selection.
+- `src/world/`: pooled infinite track, props, camera, player presentation, and
+  world orchestration.
+- `src/config/`: data-driven gameplay, visuals, cosmetics, and performance.
+- `src/contracts/`: shared gameplay-to-world data contracts.
+- `src/ui/`, `src/audio/`, `src/vfx/`: complete presentation layer.
+- `src/tests/`: unit, integration, asset-runtime, three-minute, and restart
+  acceptance coverage.
 
-- `src/gameplay/`
-- `src/systems/`
-- `src/config/gameplay/`
-- `src/input/`
-- `src/tests/gameplay/`
-
-Person 2 owns world/UI:
-
-- `src/world/`
-- `src/assets/`
-- `src/ui/`
-- `src/audio/`
-- `src/vfx/`
-- `src/tests/world/`
-
-Shared areas require a small focused PR:
-
-- `src/contracts/`
-- `src/events/`
-- `src/scenes/`
-- `src/config/shared/`
-
-## Git Workflow
-
-Use `main` for stable code and `develop` for integration. Feature work branches from `develop`.
-
-Suggested branches:
-
-```text
-feature/m1-player-controller
-feature/m1-whitebox-world
-feature/m2-player-rig
-feature/m2-asset-import
-```
-
-Before merging a task, run:
-
-```bash
-pnpm run typecheck
-pnpm run test
-pnpm run build
-```
+Milestone notes remain in `docs/`. The shippable integration work lives on the
+`super-slop` branch.

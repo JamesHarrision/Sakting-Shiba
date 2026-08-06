@@ -2,9 +2,10 @@
 
 ## Scope
 
-Milestone 3 provides pure TypeScript gameplay data and progression systems.
-It does not create Babylon meshes, move the track, perform collision checks,
-award score, or change player movement and player assets.
+Milestone 3 introduced the pure TypeScript progression and spawn contracts.
+The ship integration now consumes those contracts in `RunGameplaySystem` and
+renders their requests through `TrackManager`; the director still has no
+Babylon dependency and remains the sole owner of pattern selection.
 
 ## RunSpeedSystem
 
@@ -24,8 +25,9 @@ running state.
 
 ## Spawn patterns
 
-Patterns are declared in `src/config/gameplay/spawnPatterns.ts`. Rows use only
-`debug_obstacle`, `debug_pickup`, and `empty`.
+Patterns are declared in `src/config/gameplay/spawnPatterns.ts`. Rows use
+`obstacle_box`, `obstacle_fence`, `obstacle_dumpster`, `coin`, the three timed
+powerups, and `empty`.
 
 | Tier | Minimum difficulty | Patterns |
 | --- | ---: | --- |
@@ -34,8 +36,9 @@ Patterns are declared in `src/config/gameplay/spawnPatterns.ts`. Rows use only
 | Hard | 4 | `hard-zigzag-gates` |
 
 Every row has at least one explicit empty lane. Starting patterns have at most
-one obstacle per row. Debug item types do not encode jump or crouch actions, so
-a row cannot require both actions at the same position.
+one obstacle per row. No row requires jumping and crouching at the same
+position. Box obstacles require a jump, fences require crouching, and dumpsters
+require changing lane.
 
 ## SpawnDirector
 
@@ -50,7 +53,8 @@ or `null` while paused. It:
 - Restores random and spawn state on reset.
 
 The director returns data only and has no Babylon or world implementation
-dependency.
+dependency. `RunGameplaySystem` forwards the resulting requests to the world;
+the removed development-only placeholder feeder is no longer part of runtime.
 
 ## World Agent handoff
 
@@ -74,4 +78,5 @@ pnpm run build
 
 The automated suite covers speed progression and clamping, difficulty,
 pause/reset, difficulty filtering, safe lanes, deterministic seeds, spawn
-spacing, paused spawning, and restart state cleanup.
+spacing, paused spawning, three simulated minutes, and ten restart cycles with
+stable mesh and spawn state.

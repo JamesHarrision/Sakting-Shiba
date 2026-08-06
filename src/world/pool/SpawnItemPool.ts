@@ -6,7 +6,7 @@ import type { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { ObjectPool } from "./ObjectPool";
 
 /**
- * Pool of simple debug placeholder meshes (box obstacles / sphere pickups).
+ * Pool of procedural fallback meshes (box obstacles / sphere pickups).
  * Meshes are created once and reused; acquired items are parented to the
  * requesting chunk's spawn root so they scroll with the track.
  */
@@ -38,7 +38,7 @@ export class SpawnItemPool {
     );
   }
 
-  /** Acquire a placeholder, parent it and place it. Returns null if pool exhausted. */
+  /** Acquire an item, parent it and place it. Returns null if pool exhausted. */
   acquire(
     parent: TransformNode,
     position: Vector3,
