@@ -3,7 +3,8 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { MaterialsRegistry } from "../../assets/MaterialsRegistry";
-import { GAMEPLAY_CONFIG, LANE_X_POSITIONS } from "../../config/gameplay/gameplayConfig";
+import { LANE_X_POSITIONS } from "../../config/gameplay/gameplayConfig";
+import { RUN_SPEED_CONFIG } from "../../config/gameplay/runSpeedConfig";
 import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
 import type { SpawnRequest, TrackDebugStats } from "../../contracts/track.contract";
 import type { PropFactory } from "../props/PropFactory";
@@ -67,7 +68,7 @@ export class TrackManager {
 
   private scrollDistance = 0;
   private paused = false;
-  private lastSpeed: number = GAMEPLAY_CONFIG.initialSpeed;
+  private lastSpeed: number = RUN_SPEED_CONFIG.initialSpeed;
   private poolExhaustedWarned = false;
   private readonly reusePosition = new Vector3();
   private props?: PropFactory;
@@ -114,6 +115,7 @@ export class TrackManager {
 
   build(parent: TransformNode, props: PropFactory): void {
     this.root.parent = parent;
+    this.props = props;
 
     const variantCtors = [StraightChunkA, StraightChunkB, StraightChunkC];
     for (let i = 0; i < this.chunkCount; i++) {
@@ -164,15 +166,14 @@ export class TrackManager {
       for (const row of request.rows) {
         const worldZ = request.startZ + row.offsetZ;
         row.lanes.forEach((item, lane) => {
-          if (!item) {
+          if (item === "empty") {
             return;
           }
-          if (item.type === "obstacle") {
-            this.placeObstacle(lane, worldZ, item.assetId);
-          } else if (item.type === "pickup") {
+          if (item === "debug_obstacle") {
+            this.placeObstacle(lane, worldZ);
+          } else if (item === "debug_pickup") {
             this.placePickup(lane, worldZ);
           }
-          // ramp/rail/other kinds are not rendered by the M3 placeholder policy
         });
       }
     }
@@ -187,7 +188,7 @@ export class TrackManager {
       chunk.root.position.z =
         (this.chunks.indexOf(chunk) - 1) * this.chunkLength;
     }
-    this.lastSpeed = GAMEPLAY_CONFIG.initialSpeed;
+    this.lastSpeed = RUN_SPEED_CONFIG.initialSpeed;
     this.poolExhaustedWarned = false;
   }
 
@@ -266,7 +267,11 @@ export class TrackManager {
     }
   }
 
-  private placeObstacle(lane: number, worldZ: number, assetId: string): void {
+  private placeObstacle(
+    lane: number,
+    worldZ: number,
+    assetId = "obstacle.box"
+  ): void {
     const kind = OBSTACLE_KIND_BY_ASSET[assetId];
     const laneX = LANE_X_POSITIONS[lane as keyof typeof LANE_X_POSITIONS];
 

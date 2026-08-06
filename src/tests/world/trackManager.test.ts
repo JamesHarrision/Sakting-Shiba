@@ -6,15 +6,15 @@ import { describe, expect, it } from "vitest";
 import { MaterialsRegistry } from "../../assets/MaterialsRegistry";
 import { LANE_X_POSITIONS } from "../../config/gameplay/gameplayConfig";
 import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
-import type { SpawnItem } from "../../contracts/gameplay";
+import type { SpawnItemType } from "../../contracts/spawn-pattern.contract";
 import type { SpawnRequest } from "../../contracts/track.contract";
 import { SpawnPlaceholderFeeder } from "../../world/track/SpawnPlaceholderFeeder";
 import { TrackManager } from "../../world/track/TrackManager";
 import { PropAssetLoader } from "../../world/props/PropAssetLoader";
 import { PropFactory } from "../../world/props/PropFactory";
 
-const OBSTACLE: SpawnItem = { type: "obstacle", assetId: "obstacle.box" };
-const PICKUP: SpawnItem = { type: "pickup", assetId: "pickup.fish" };
+const OBSTACLE: SpawnItemType = "debug_obstacle";
+const PICKUP: SpawnItemType = "debug_pickup";
 
 function createFixture(): {
   scene: Scene;
@@ -74,7 +74,7 @@ describe("TrackManager", () => {
       rows: [
         {
           offsetZ: 0,
-          lanes: [OBSTACLE, PICKUP, null]
+          lanes: [OBSTACLE, PICKUP, "empty"]
         }
       ]
     };
@@ -118,7 +118,7 @@ describe("TrackManager", () => {
       {
         patternId: "far",
         startZ: 4000,
-        rows: [{ offsetZ: 0, lanes: [OBSTACLE, null, null] }]
+        rows: [{ offsetZ: 0, lanes: [OBSTACLE, "empty", "empty"] }]
       }
     ]);
 
@@ -179,7 +179,7 @@ describe("TrackManager", () => {
       {
         patternId: "test",
         startZ: 20,
-        rows: [{ offsetZ: 0, lanes: [OBSTACLE, null, PICKUP] }]
+        rows: [{ offsetZ: 0, lanes: [OBSTACLE, "empty", PICKUP] }]
       }
     ]);
     for (let i = 0; i < 200; i += 1) {
@@ -239,7 +239,7 @@ describe("TrackManager", () => {
 
     // Items are placed ahead of the player (world Z > 0) and scroll in
     const stats = manager.getDebugStats();
-    expect(stats.activeObstacles).toBeGreaterThan(0);
+    expect(stats.activeObstacles + stats.activePickups).toBeGreaterThan(0);
 
     // Reset clears everything and the feeder restarts
     manager.reset();

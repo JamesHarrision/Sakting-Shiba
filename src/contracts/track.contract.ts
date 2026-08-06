@@ -1,4 +1,4 @@
-import type { SpawnRow } from "./gameplay";
+import type { SpawnRow } from "./spawn-pattern.contract";
 
 /**
  * World-space request from the Gameplay Agent to render spawn placeholders.

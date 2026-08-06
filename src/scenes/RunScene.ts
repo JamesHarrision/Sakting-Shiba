@@ -83,7 +83,7 @@ export class RunScene {
     this.playerRig.applyGameplayState(playerSnap, colliderSnap);
     this.playerVisual.applySnapshot(playerSnap);
     this.playerVisual.update(deltaSeconds);
-    this.worldController.trackManager.update(deltaSeconds, speed);
+    this.worldController.update(deltaSeconds, speed);
 
     this.cameraController.update(deltaSeconds, {
       targetX: cameraSnap.targetX,
