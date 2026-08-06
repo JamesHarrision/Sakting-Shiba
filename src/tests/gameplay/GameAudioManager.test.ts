@@ -16,4 +16,11 @@ describe("procedural music buffer", () => {
     expect(peak).toBeLessThanOrEqual(1);
     expect(energy).toBeGreaterThan(1);
   });
+
+  it("ends a complete musical phrase without a loud loop seam", () => {
+    const samples = buildMusicSamples(8000, 2.5);
+    const seamDelta = Math.abs(samples[0] - samples[samples.length - 1]);
+
+    expect(seamDelta).toBeLessThan(0.05);
+  });
 });

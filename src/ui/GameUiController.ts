@@ -3,9 +3,11 @@ import type { PlayerProfile } from "../gameplay/PlayerProfileStore";
 import type { RunState } from "../contracts/gameplay";
 import { COSMETICS, type CosmeticItem } from "../config/visual/cosmeticsConfig";
 import type { TutorialStep } from "../gameplay/TutorialSystem";
+import type { ObstacleItemType } from "../contracts/spawn-pattern.contract";
 
 export interface GameUiActions {
   readonly onStart: () => void;
+  readonly onTutorialStart: () => void;
   readonly onPause: () => void;
   readonly onResume: () => void;
   readonly onRestart: () => void;
@@ -69,6 +71,7 @@ export class GameUiController {
         <p class="wallet-line"><span class="coin-mark"></span>${profile.coins}</p>
         <div class="menu-actions">
           <button class="primary-command" data-action="start">Start run <span>→</span></button>
+          <button class="secondary-command" data-action="tutorial">Tutorial</button>
           <button class="secondary-command" data-action="store">Store</button>
         </div>
       </section>`;
@@ -103,13 +106,18 @@ export class GameUiController {
       </section>`;
   }
 
-  showGameOver(run: Readonly<RunState>, profile: Readonly<PlayerProfile>): void {
+  showGameOver(
+    run: Readonly<RunState>,
+    profile: Readonly<PlayerProfile>,
+    hitType: ObstacleItemType | null = null
+  ): void {
     this.tutorial.hidden = true;
     this.touchControls.hidden = true;
     this.overlay.hidden = false;
     this.overlay.innerHTML = `
       <section class="result-screen">
         <p class="game-kicker">Run complete</p><h2>${run.score.toLocaleString()}</h2>
+        ${this.renderCrashReason(hitType)}
         <div class="result-stats">
           <span>Distance <strong>${Math.floor(run.distance)}m</strong></span>
           <span>Run coins <strong>${run.coins}</strong></span>
@@ -189,6 +197,17 @@ export class GameUiController {
     </article>`;
   }
 
+  private renderCrashReason(hitType: ObstacleItemType | null): string {
+    if (!hitType) return "";
+    const copy: Readonly<Record<ObstacleItemType, [string, string]>> = {
+      obstacle_box: ["Box impact", "Jump before the box reaches the board."],
+      obstacle_fence: ["Fence impact", "Crouch to pass beneath the fence."],
+      obstacle_dumpster: ["Dumpster impact", "Switch to an open lane."]
+    };
+    const [title, tip] = copy[hitType];
+    return `<p class="crash-reason"><strong>${title}</strong><span>${tip}</span></p>`;
+  }
+
   private readonly handleClick = (event: Event): void => {
     const target = (event.target as HTMLElement).closest<HTMLElement>("[data-action],[data-input],[data-cosmetic]");
     if (!target) return;
@@ -202,6 +221,7 @@ export class GameUiController {
     }
     const action = target.dataset.action;
     if (action === "start") this.actions.onStart();
+    else if (action === "tutorial") this.actions.onTutorialStart();
     else if (action === "pause") this.actions.onPause();
     else if (action === "resume") this.actions.onResume();
     else if (action === "restart") this.actions.onRestart();

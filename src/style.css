@@ -374,6 +374,24 @@ button:focus-visible {
   margin-top: 28px;
 }
 
+.crash-reason {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.crash-reason strong {
+  color: var(--coral);
+  font-size: 18px;
+}
+
+.crash-reason span {
+  font-size: 14px;
+}
+
 .result-stats span {
   color: rgba(255, 255, 255, 0.65);
   font-size: 13px;

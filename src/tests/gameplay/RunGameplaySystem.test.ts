@@ -32,4 +32,30 @@ describe("RunGameplaySystem", () => {
     expect(system.getCurrentSpeed()).toBe(RUN_SPEED_CONFIG.initialSpeed);
     expect(system.update(0, 0).spawnRequests.length).toBeGreaterThan(0);
   });
+
+  it("uses a coin-only route during the first-run tutorial", () => {
+    const system = new RunGameplaySystem();
+    system.setTutorialMode(true);
+
+    const tutorialFrame = system.update(1 / 60, 0);
+    expect(tutorialFrame.spawnRequests.length).toBeGreaterThan(0);
+    expect(
+      tutorialFrame.spawnRequests.every(
+        (request) =>
+          request.patternId === "tutorial-coin-route" &&
+          request.rows.every((row) =>
+            row.lanes.every((item) => item === "coin" || item === "empty")
+          )
+      )
+    ).toBe(true);
+
+    system.setTutorialMode(false);
+    const normalFrame = system.update(1 / 60, 0);
+    expect(normalFrame.spawnRequests.length).toBeGreaterThan(0);
+    expect(
+      normalFrame.spawnRequests.every(
+        (request) => request.patternId !== "tutorial-coin-route"
+      )
+    ).toBe(true);
+  });
 });

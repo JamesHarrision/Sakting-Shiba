@@ -61,7 +61,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
     assetPath: `${PROPS_ASSET_DIR}/box.glb`,
     useAsset: true,
     calibration: {
-      position: { x: 0, y: 0, z: 0 },
+      position: { x: 0, y: 0.45, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
       scale: 0.45,
     },
@@ -101,8 +101,8 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
     assetPath: `${PROPS_ASSET_DIR}/fence.glb`,
     useAsset: true,
     calibration: {
-      position: { x: 0, y: 0.238, z: 0 },
-      rotationDegrees: { x: 0, y: 0, z: 0 },
+      position: { x: -1.09, y: 0.238, z: -0.227 },
+      rotationDegrees: { x: 0, y: 90, z: 0 },
       scale: 0.025,
     },
   },

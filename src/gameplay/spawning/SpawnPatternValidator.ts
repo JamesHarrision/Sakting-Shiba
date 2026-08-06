@@ -20,12 +20,17 @@ export interface SpawnPatternValidationIssue {
   readonly message: string;
 }
 
+export interface SpawnPatternValidationOptions {
+  readonly minimumStartingPatterns?: number;
+}
+
 export function hasEscapeLane(row: Readonly<SpawnRow>): boolean {
   return row.lanes.includes("empty");
 }
 
 export function validateSpawnPatterns(
-  patterns: readonly SpawnPattern[]
+  patterns: readonly SpawnPattern[],
+  options: Readonly<SpawnPatternValidationOptions> = {}
 ): readonly SpawnPatternValidationIssue[] {
   const issues: SpawnPatternValidationIssue[] = [];
   const ids = new Set<string>();
@@ -109,10 +114,11 @@ export function validateSpawnPatterns(
     }
   }
 
-  if (easyPatternCount < 3) {
+  const minimumStartingPatterns = options.minimumStartingPatterns ?? 3;
+  if (easyPatternCount < minimumStartingPatterns) {
     issues.push({
       patternId: "<collection>",
-      message: "At least three starting patterns are required."
+      message: `At least ${minimumStartingPatterns} starting pattern(s) are required.`
     });
   }
 
@@ -120,9 +126,10 @@ export function validateSpawnPatterns(
 }
 
 export function assertSpawnPatternsSafe(
-  patterns: readonly SpawnPattern[]
+  patterns: readonly SpawnPattern[],
+  options: Readonly<SpawnPatternValidationOptions> = {}
 ): void {
-  const issues = validateSpawnPatterns(patterns);
+  const issues = validateSpawnPatterns(patterns, options);
   if (issues.length === 0) return;
 
   const details = issues

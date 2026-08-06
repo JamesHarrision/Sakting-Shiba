@@ -42,4 +42,12 @@ describe("spawn pattern configuration", () => {
 
     expect(issues.some((issue) => issue.message.includes("empty escape lane"))).toBe(true);
   });
+
+  it("can validate a dedicated single-route tutorial collection", () => {
+    expect(
+      validateSpawnPatterns([SPAWN_PATTERNS[0]], {
+        minimumStartingPatterns: 1
+      })
+    ).toEqual([]);
+  });
 });

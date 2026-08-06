@@ -19,7 +19,10 @@ import {
 } from "./config/visual/cosmeticsConfig";
 import type { PlayerColliderSnapshot } from "./contracts/player-collider.contract";
 import type { PlayerVisualSnapshot } from "./contracts/player-visual.contract";
-import type { CollectibleItemType } from "./contracts/spawn-pattern.contract";
+import type {
+  CollectibleItemType,
+  ObstacleItemType
+} from "./contracts/spawn-pattern.contract";
 import { GameEventBus } from "./events/GameEventBus";
 import { GameClock } from "./gameplay/GameClock";
 import { PlayerController } from "./gameplay/PlayerController";
@@ -83,18 +86,27 @@ let playerVisualSnapshot = playerController.getVisualSnapshot(playerSnapshot);
 let playerColliderSnapshot: Readonly<PlayerColliderSnapshot> =
   playerColliderController.update(playerController.getSnapshot());
 let currentSpeed = 0;
+let lastObstacleHit: ObstacleItemType | null = null;
 let ui!: GameUiController;
 
 const tutorial = new TutorialSystem(
   eventBus,
   (step) => ui?.showTutorial(step),
-  () => profileStore.completeTutorial()
+  () => {
+    profileStore.completeTutorial();
+    runGameplay.setTutorialMode(false);
+    runScene.getTrackManager().clearSpawnItems();
+  }
 );
 
 ui = new GameUiController({
   onStart: () => {
     void audio.unlock().then(() => audio.setPaused(false));
     beginCountdown(!profileStore.getSnapshot().tutorialCompleted);
+  },
+  onTutorialStart: () => {
+    void audio.unlock().then(() => audio.setPaused(false));
+    beginCountdown(true);
   },
   onPause: pauseRun,
   onResume: resumeRun,
@@ -139,6 +151,7 @@ engine.runRenderLoop(() => {
     : 0;
 
   if (deltaSeconds > 0) {
+    tutorial.update(deltaSeconds);
     powerUps.update(deltaSeconds);
     currentPowerUpSnapshot = powerUps.getSnapshot();
     playerController.setFlightHeight(
@@ -213,13 +226,14 @@ function processCollisions(): void {
   const collisionFrame = collisionSystem.update(
     playerColliderSnapshot,
     runScene.getTrackManager().getActiveItems(),
-    currentPowerUpSnapshot.isInvulnerable || tutorial.isActive
+    currentPowerUpSnapshot.isInvulnerable || tutorial.isProtected
   );
   for (const collectible of collisionFrame.collectibles) {
     collectWorldItem(collectible.itemId, collectible.type);
   }
 
   if (!collisionFrame.obstacleHit) return;
+  lastObstacleHit = collisionFrame.obstacleHit.type;
   runScene.getTrackManager().consumeItem(collisionFrame.obstacleHit.itemId);
   playerController.kill();
   playerVisualSnapshot = playerController.getVisualSnapshot();
@@ -230,7 +244,11 @@ function processCollisions(): void {
   appMode = "gameover";
   gameFeel.update(0, currentPowerUpSnapshot);
   audio.setPaused(true);
-  ui.showGameOver(runStateStore.getSnapshot(), profileStore.getSnapshot());
+  ui.showGameOver(
+    runStateStore.getSnapshot(),
+    profileStore.getSnapshot(),
+    lastObstacleHit
+  );
 }
 
 function collectWorldItem(itemId: number, type: CollectibleItemType): void {
@@ -246,6 +264,7 @@ function collectWorldItem(itemId: number, type: CollectibleItemType): void {
 
 function beginCountdown(withTutorial: boolean): void {
   prepareRun();
+  runGameplay.setTutorialMode(withTutorial);
   startWithTutorial = withTutorial;
   countdownRemaining = 3;
   displayedCountdown = 3;
@@ -286,6 +305,7 @@ function prepareRun(): void {
   playerColliderSnapshot = playerColliderController.getSnapshot();
   runStateStore.startRun();
   currentSpeed = runGameplay.getCurrentSpeed();
+  lastObstacleHit = null;
   hudElapsed = 0;
   runScene.reset();
   clock.pause();
@@ -342,7 +362,11 @@ function openStore(): void {
 function closeStore(): void {
   if (storeReturnMode === "gameover") {
     appMode = "gameover";
-    ui.showGameOver(runStateStore.getSnapshot(), profileStore.getSnapshot());
+    ui.showGameOver(
+      runStateStore.getSnapshot(),
+      profileStore.getSnapshot(),
+      lastObstacleHit
+    );
   } else {
     showMainMenu();
   }

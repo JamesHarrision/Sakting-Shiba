@@ -8,6 +8,7 @@ import { LANE_X_POSITIONS } from "../../config/gameplay/gameplayConfig";
 import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
 import type { SpawnItemType } from "../../contracts/spawn-pattern.contract";
 import type { SpawnRequest } from "../../contracts/track.contract";
+import { RunGameplaySystem } from "../../gameplay/RunGameplaySystem";
 import { TrackManager } from "../../world/track/TrackManager";
 import { PropAssetLoader } from "../../world/props/PropAssetLoader";
 import { PropFactory } from "../../world/props/PropFactory";
@@ -193,6 +194,37 @@ describe("TrackManager", () => {
     expect(afterReset).toBe(beforeReset);
     expect(manager.getDebugStats().activeObstacles).toBe(0);
     expect(manager.getDebugStats().activePickups).toBe(0);
+    dispose();
+  });
+
+  it("clears tutorial items without resetting track progress", () => {
+    const { manager, dispose } = createFixture();
+    manager.submitSpawnRequests([
+      {
+        patternId: "tutorial-coin-route",
+        startZ: 16,
+        rows: [{ offsetZ: 0, lanes: [PICKUP, "empty", PICKUP] }]
+      }
+    ]);
+    manager.update(0.5, 10);
+    const distanceBeforeClear = manager.getScrollDistance();
+
+    manager.clearSpawnItems();
+
+    expect(manager.getDebugStats().activePickups).toBe(0);
+    expect(manager.getScrollDistance()).toBe(distanceBeforeClear);
+    dispose();
+  });
+
+  it("keeps the initial tutorial route within the pickup pool budget", () => {
+    const { manager, dispose } = createFixture();
+    const gameplay = new RunGameplaySystem();
+    gameplay.setTutorialMode(true);
+
+    const frame = gameplay.update(0, 0);
+    manager.submitSpawnRequests(frame.spawnRequests);
+
+    expect(manager.getDebugStats().activePickups).toBe(12);
     dispose();
   });
 

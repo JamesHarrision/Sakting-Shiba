@@ -13,6 +13,7 @@ import { assertSpawnPatternsSafe } from "./SpawnPatternValidator";
 
 export interface SpawnDirectorOptions extends Partial<SpawnDirectorConfig> {
   readonly seed?: number;
+  readonly minimumStartingPatterns?: number;
 }
 
 export class SpawnDirector {
@@ -27,7 +28,9 @@ export class SpawnDirector {
     private readonly patterns: readonly SpawnPattern[] = SPAWN_PATTERNS,
     options: SpawnDirectorOptions = {}
   ) {
-    assertSpawnPatternsSafe(patterns);
+    assertSpawnPatternsSafe(patterns, {
+      minimumStartingPatterns: options.minimumStartingPatterns
+    });
     this.seed = options.seed ?? 0x434154;
     this.random = new SeededRandom(this.seed);
     this.initialSpawnDistance =

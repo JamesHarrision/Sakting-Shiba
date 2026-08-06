@@ -271,6 +271,10 @@ export class TrackManager {
     return true;
   }
 
+  clearSpawnItems(): void {
+    this.releaseAllSpawnItems();
+  }
+
   dispose(): void {
     this.releaseAllSpawnItems();
     this.obstaclePool.dispose();

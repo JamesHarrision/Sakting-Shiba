@@ -3,10 +3,12 @@ import type { GameEventBus } from "../events/GameEventBus";
 export type TutorialStep = "lane" | "jump" | "crouch" | "coin" | "complete";
 
 const STEPS: readonly TutorialStep[] = ["lane", "jump", "crouch", "coin", "complete"];
+export const POST_TUTORIAL_PROTECTION_SECONDS = 3;
 
 export class TutorialSystem {
   private active = false;
   private stepIndex = 0;
+  private protectionRemaining = 0;
   private readonly unsubscribe: Array<() => void> = [];
 
   constructor(
@@ -27,6 +29,7 @@ export class TutorialSystem {
   start(): void {
     this.active = true;
     this.stepIndex = 0;
+    this.protectionRemaining = 0;
     this.onStepChanged(this.getStep());
   }
 
@@ -38,6 +41,7 @@ export class TutorialSystem {
   cancel(): void {
     this.active = false;
     this.stepIndex = 0;
+    this.protectionRemaining = 0;
     this.onStepChanged("complete");
   }
 
@@ -47,6 +51,18 @@ export class TutorialSystem {
 
   get isActive(): boolean {
     return this.active;
+  }
+
+  get isProtected(): boolean {
+    return this.active || this.protectionRemaining > 0;
+  }
+
+  update(deltaSeconds: number): void {
+    if (this.active || deltaSeconds <= 0) return;
+    this.protectionRemaining = Math.max(
+      0,
+      this.protectionRemaining - deltaSeconds
+    );
   }
 
   dispose(): void {
@@ -64,6 +80,7 @@ export class TutorialSystem {
 
   private finish(): void {
     this.active = false;
+    this.protectionRemaining = POST_TUTORIAL_PROTECTION_SECONDS;
     this.stepIndex = STEPS.length - 1;
     this.onStepChanged("complete");
     this.onCompleted();
