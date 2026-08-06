@@ -13,6 +13,7 @@ export const PROPS_ASSET_DIR = "/src/assets/models/props";
 
 export type PropKind =
   | "building"
+  | "skyline"
   | "lamp"
   | "fence"
   | "box"
@@ -37,10 +38,14 @@ export interface PropAssetEntry {
   readonly kind: PropKind;
   /** Expected GLB path (relative to public/), or null for procedural-only kinds. */
   readonly assetPath: string | null;
+  /** Additional interchangeable GLBs selected deterministically from the prop seed. */
+  readonly assetVariants?: readonly string[];
   /** False for source assets that exceed the runtime draw-call budget. */
   readonly useAsset: boolean;
   /** Collapses a single-material GLB into one reusable mesh before cloning. */
   readonly mergeMeshes?: boolean;
+  /** Extra distance from the road center, applied away from the lane area. */
+  readonly lateralOffset?: number;
   /** Applied to the GLB instance; unused for procedural builders. */
   readonly calibration: PropCalibration;
 }
@@ -49,7 +54,7 @@ export interface PropAssetEntry {
  * Calibration per kind, computed from the real GLB audit (scripts/audit-props.mjs).
  * World bbox at scale 1:
  * - box 2x2x2 (center pivot)        -> scale 0.45 => 0.9 cube
- * - building 5.8x5.1x8.9 (offset)   -> scale 0.6, recentered on its base
+ * - Kenney buildings are Y-up with min Y=0, so they ground without offsets.
  * - cone Z-up (axis along Z)        -> scale 0.3, rotate x -90 to stand
  * - dumpster 2.2x2.3x2.8 (center)   -> scale 0.45, base at y=-1.167
  * - fence 20x40x96 (length along Z) -> scale 0.025
@@ -71,12 +76,35 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   {
     kind: "building",
     assetPath: `${PROPS_ASSET_DIR}/building.glb`,
+    assetVariants: [
+      `${PROPS_ASSET_DIR}/building-d.glb`,
+      `${PROPS_ASSET_DIR}/building-g.glb`,
+      `${PROPS_ASSET_DIR}/building-j.glb`,
+    ],
     useAsset: true,
     mergeMeshes: true,
+    lateralOffset: 2.5,
     calibration: {
-      position: { x: -0.165, y: 1.624, z: -1.185 },
-      rotationDegrees: { x: 0, y: 0, z: 0.5 },
-      scale: 0.6,
+      position: { x: 0, y: 0, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: 3.4,
+    },
+  },
+  {
+    kind: "skyline",
+    assetPath: `${PROPS_ASSET_DIR}/skyline-a.glb`,
+    assetVariants: [
+      `${PROPS_ASSET_DIR}/skyline-d.glb`,
+      `${PROPS_ASSET_DIR}/skyline-g.glb`,
+      `${PROPS_ASSET_DIR}/skyline-j.glb`,
+    ],
+    useAsset: true,
+    mergeMeshes: true,
+    lateralOffset: 6,
+    calibration: {
+      position: { x: 0, y: 0, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: 4,
     },
   },
   {
@@ -94,9 +122,9 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
     assetPath: `${PROPS_ASSET_DIR}/dumpster.glb`,
     useAsset: true,
     calibration: {
-      position: { x: 0, y: 0.525, z: 0 },
+      position: { x: 0, y: 0, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
-      scale: 0.45,
+      scale: 2.76,
     },
   },
   {
@@ -104,9 +132,9 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
     assetPath: `${PROPS_ASSET_DIR}/fence.glb`,
     useAsset: true,
     calibration: {
-      position: { x: -1.09, y: 0.238, z: -0.227 },
-      rotationDegrees: { x: 0, y: 90, z: 0 },
-      scale: 0.025,
+      position: { x: 0, y: 0, z: 0 },
+      rotationDegrees: { x: 0, y: 0, z: 0 },
+      scale: 2.2,
     },
   },
   {
@@ -116,7 +144,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
     calibration: {
       position: { x: 0, y: 0, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
-      scale: 0.05,
+      scale: 2.3,
     },
   },
   {
@@ -134,9 +162,9 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
     assetPath: `${PROPS_ASSET_DIR}/tree.glb`,
     useAsset: true,
     calibration: {
-      position: { x: 0, y: 1.14, z: 0 },
+      position: { x: 0, y: 0, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
-      scale: 0.25,
+      scale: 1.8,
     },
   },
   // Procedural-only rooftop staples (no asset yet)
@@ -192,12 +220,12 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   },
   {
     kind: "barrier",
-    assetPath: null,
-    useAsset: false,
+    assetPath: `${PROPS_ASSET_DIR}/barrier.glb`,
+    useAsset: true,
     calibration: {
       position: { x: 0, y: 0, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
-      scale: 1,
+      scale: 2.5,
     },
   },
 ];

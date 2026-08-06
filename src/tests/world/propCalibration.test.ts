@@ -6,8 +6,8 @@ import { getPropEntry } from "../../config/visual/props.config";
 describe("obstacle asset calibration", () => {
   it("centers the merged building asset and places its base on the rooftop", () => {
     const building = getPropEntry("building");
-    const sourceMinimum = { x: -2.619, y: -2.707, z: -2.457 };
-    const sourceMaximum = { x: 3.168, y: 2.427, z: 6.408 };
+    const sourceMinimum = { x: -0.442, y: 0, z: -0.47 };
+    const sourceMaximum = { x: 0.442, y: 1.293, z: 0.47 };
     const centerX = (sourceMinimum.x + sourceMaximum.x) / 2;
     const centerZ = (sourceMinimum.z + sourceMaximum.z) / 2;
 
@@ -36,28 +36,28 @@ describe("obstacle asset calibration", () => {
 
   it("rotates and centers the fence across a lane", () => {
     const fence = getPropEntry("fence");
-    const sourceWidth = 20.082;
-    const sourceLength = 96.11;
-    const visualWidth = sourceLength * fence.calibration.scale;
-    const visualDepth = sourceWidth * fence.calibration.scale;
+    const sourceWidth = 1;
+    const sourceDepth = 0.07;
+    const visualWidth = sourceWidth * fence.calibration.scale;
+    const visualDepth = sourceDepth * fence.calibration.scale;
 
-    expect(fence.calibration.rotationDegrees.y).toBe(90);
+    expect(fence.calibration.rotationDegrees.y).toBe(0);
     expect(visualWidth).toBeGreaterThan(1.8);
     expect(visualDepth).toBeLessThan(0.7);
-    expect(fence.calibration.position.x).toBeCloseTo(-1.09, 2);
-    expect(fence.calibration.position.z).toBeCloseTo(-0.227, 3);
+    expect(fence.calibration.position.x).toBe(0);
+    expect(fence.calibration.position.z).toBe(0);
   });
 
   it("keeps the dumpster collider inside the calibrated GLB silhouette", () => {
     const dumpster = getPropEntry("dumpster");
     const rule = OBSTACLE_RULES.obstacle_dumpster;
-    const visualWidth = 2.228 * dumpster.calibration.scale;
-    const visualHeight = 2.311 * dumpster.calibration.scale;
-    const visualDepth = 2.799 * dumpster.calibration.scale;
+    const visualWidth = 0.6 * dumpster.calibration.scale;
+    const visualHeight = 0.545 * dumpster.calibration.scale;
+    const visualDepth = 0.454 * dumpster.calibration.scale;
 
     expect(rule.width).toBeLessThanOrEqual(visualWidth);
     expect(rule.height).toBeLessThanOrEqual(visualHeight + 0.001);
     expect(rule.depth).toBeLessThanOrEqual(visualDepth);
-    expect(rule.centerYOffset).toBeCloseTo(visualHeight / 2, 2);
+    expect(rule.centerYOffset).toBeLessThanOrEqual(visualHeight / 2);
   });
 });

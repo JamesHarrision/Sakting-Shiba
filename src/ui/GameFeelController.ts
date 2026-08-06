@@ -24,7 +24,6 @@ export class GameFeelController {
         onImpact(0.38);
         this.pulse("is-hit", 420);
       }),
-      eventBus.on("COIN_COLLECTED", () => this.pulse("is-coin", 160)),
       eventBus.on("POWERUP_ACTIVATED", () => {
         onImpact(0.12);
         this.pulse("is-power", 380);

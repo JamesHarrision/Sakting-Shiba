@@ -13,6 +13,8 @@ export class StraightChunkA extends TrackChunk {
     // Skyline silhouettes near the chunk edges
     this.placeProp("building", this.rooftopX, 5 + rand() * 3, seed++);
     this.placeProp("building", -this.rooftopX, len - 6 - rand() * 3, seed++);
+    this.placeProp("skyline", this.rooftopX, len / 2 + 3, seed++);
+    this.placeProp("skyline", -this.rooftopX, len / 2 - 3, seed++);
 
     // Lamps + potted plants along the rooftop edges
     for (const side of [-1, 1] as const) {

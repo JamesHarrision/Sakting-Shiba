@@ -41,7 +41,7 @@ export class PropFactory {
     seed: number
   ): PropInstance {
     if (this.loader.has(kind)) {
-      return this.instantiateAsset(kind, parent, position);
+      return this.instantiateAsset(kind, parent, position, seed);
     }
     return this.buildProcedural(kind, parent, position, seed);
   }
@@ -51,11 +51,12 @@ export class PropFactory {
   private instantiateAsset(
     kind: PropKind,
     parent: TransformNode,
-    position: Vector3
+    position: Vector3,
+    seed: number
   ): PropInstance {
     const entry = getPropEntry(kind);
-    const optimizedTemplate = this.loader.getOptimizedTemplate(kind);
-    const container = this.loader.getContainer(kind);
+    const optimizedTemplate = this.loader.getOptimizedTemplate(kind, seed);
+    const container = this.loader.getContainer(kind, seed);
     if (!optimizedTemplate && !container) {
       return { dispose: () => {} };
     }
@@ -63,6 +64,7 @@ export class PropFactory {
     const instanceRoot = new TransformNode(`prop-${kind}-instance`, this.scene);
     instanceRoot.parent = parent;
     instanceRoot.position.copyFrom(position);
+    instanceRoot.position.x += Math.sign(position.x) * (entry.lateralOffset ?? 0);
     // Calibration offset (raises center-pivoted models so they sit on the ground)
     instanceRoot.position.x += entry.calibration.position.x;
     instanceRoot.position.y += entry.calibration.position.y;
@@ -123,28 +125,30 @@ export class PropFactory {
     };
 
     switch (kind) {
-      case "building": {
-        const h = 3 + rand() * 3.5;
-        const w = 1.4 + rand() * 1.4;
-        const depth = 1.2 + rand();
+      case "building":
+      case "skyline": {
+        const isSkyline = kind === "skyline";
+        const h = (isSkyline ? 5 : 3) + rand() * (isSkyline ? 3 : 3.5);
+        const w = (isSkyline ? 1.2 : 1.4) + rand() * (isSkyline ? 0.8 : 1.4);
+        const depth = (isSkyline ? 1 : 1.2) + rand();
         const palette = ["#4E5968", "#675765", "#4D6661", "#6B6253", "#47546B"];
         const colorIndex = Math.min(
           palette.length - 1,
           Math.floor(rand() * palette.length)
         );
         const body = MeshBuilder.CreateBox(
-          "prop-building",
+          `prop-${kind}`,
           { width: w, height: h, depth },
           this.scene
         );
         body.material = this.materials.createMaterial(
-          `prop.building.${colorIndex}`,
+          `prop.${kind}.${colorIndex}`,
           palette[colorIndex]
         );
         push(body, h / 2);
         if (rand() > 0.45) {
           const cap = MeshBuilder.CreateBox(
-            "prop-building-cap",
+            `prop-${kind}-cap`,
             { width: w * 0.45, height: 0.32, depth: depth * 0.55 },
             this.scene
           );

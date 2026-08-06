@@ -116,11 +116,6 @@ button:focus-visible {
   animation: impact-flash 420ms var(--motion) both;
 }
 
-.game-feel-layer.is-coin .impact-flash {
-  background: var(--yellow);
-  animation: coin-flash 160ms var(--motion) both;
-}
-
 .game-feel-layer.is-power .impact-flash,
 .game-feel-layer.is-landing .impact-flash {
   animation: soft-flash 300ms var(--motion) both;
@@ -580,11 +575,6 @@ button:focus-visible {
 
 @keyframes impact-flash {
   0% { opacity: 0.58; }
-  100% { opacity: 0; }
-}
-
-@keyframes coin-flash {
-  0% { opacity: 0.2; }
   100% { opacity: 0; }
 }
 

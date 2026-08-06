@@ -14,8 +14,8 @@ export class StraightChunkB extends TrackChunk {
       // Building skyline: near edge, far mid, near edge
       this.placeProp("building", side * this.rooftopX, 3 + rand() * 3, seed++);
       this.placeProp(
-        "building",
-        side * (this.rooftopX + 1.6),
+        "skyline",
+        side * this.rooftopX,
         len / 2,
         seed++
       );

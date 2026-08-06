@@ -10,8 +10,8 @@ export class StraightChunkD extends TrackChunk {
     for (const side of [-1, 1] as const) {
       this.placeProp("building", side * this.rooftopX, 5 + rand() * 4, seed++);
       this.placeProp(
-        "building",
-        side * (this.rooftopX + 1.7),
+        "skyline",
+        side * this.rooftopX,
         len - 7 - rand() * 4,
         seed++
       );

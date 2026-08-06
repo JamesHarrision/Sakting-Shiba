@@ -25,8 +25,8 @@ const PROPS_URLS = import.meta.glob([
  * (the procedural builder stays active) without console noise.
  */
 export class PropAssetLoader {
-  private readonly containers = new Map<PropKind, AssetContainer>();
-  private readonly optimizedTemplates = new Map<PropKind, Mesh>();
+  private readonly containers = new Map<PropKind, AssetContainer[]>();
+  private readonly optimizedTemplates = new Map<PropKind, Mesh[]>();
   private readonly states = new Map<PropKind, PropAssetState>();
   private scene!: Scene;
 
@@ -49,23 +49,24 @@ export class PropAssetLoader {
   }
 
   has(kind: PropKind): boolean {
-    return this.containers.has(kind) || this.optimizedTemplates.has(kind);
+    return (this.containers.get(kind)?.length ?? 0) > 0 ||
+      (this.optimizedTemplates.get(kind)?.length ?? 0) > 0;
   }
 
-  getContainer(kind: PropKind): AssetContainer | undefined {
-    return this.containers.get(kind);
+  getContainer(kind: PropKind, variant = 0): AssetContainer | undefined {
+    return pickVariant(this.containers.get(kind), variant);
   }
 
-  getOptimizedTemplate(kind: PropKind): Mesh | undefined {
-    return this.optimizedTemplates.get(kind);
+  getOptimizedTemplate(kind: PropKind, variant = 0): Mesh | undefined {
+    return pickVariant(this.optimizedTemplates.get(kind), variant);
   }
 
   dispose(): void {
-    for (const container of this.containers.values()) {
-      container.dispose();
+    for (const containers of this.containers.values()) {
+      for (const container of containers) container.dispose();
     }
-    for (const template of this.optimizedTemplates.values()) {
-      template.dispose(false, true);
+    for (const templates of this.optimizedTemplates.values()) {
+      for (const template of templates) template.dispose(false, true);
     }
     this.containers.clear();
     this.optimizedTemplates.clear();
@@ -83,32 +84,52 @@ export class PropAssetLoader {
       return;
     }
 
-    // The glob only contains existing files — missing = procedural fallback
-    const url = PROPS_URLS[entry.assetPath];
-    if (!url) {
+    const paths = [entry.assetPath, ...(entry.assetVariants ?? [])];
+    const urls = paths.flatMap((path) => {
+      const url = PROPS_URLS[path];
+      return url ? [url] : [];
+    });
+    if (urls.length === 0) {
       this.states.set(kind, "missing");
       return;
     }
 
     this.states.set(kind, "loading");
-    try {
-      const container = await SceneLoader.LoadAssetContainerAsync(
-        url,
-        undefined,
-        this.scene
-      );
-      container.removeAllFromScene();
-      if (entry.mergeMeshes) {
-        const template = optimizePropContainer(container, kind);
-        this.optimizedTemplates.set(kind, template);
-      } else {
-        this.containers.set(kind, container);
+    const loaded = await Promise.all(urls.map(async (url) => {
+      try {
+        const container = await SceneLoader.LoadAssetContainerAsync(
+          url,
+          undefined,
+          this.scene
+        );
+        container.removeAllFromScene();
+        return container;
+      } catch {
+        return undefined;
       }
-      this.states.set(kind, "loaded");
-    } catch {
+    }));
+    const containers = loaded.filter(
+      (container): container is AssetContainer => container !== undefined
+    );
+    if (containers.length === 0) {
       this.states.set(kind, "missing");
+      return;
     }
+    if (entry.mergeMeshes) {
+      this.optimizedTemplates.set(
+        kind,
+        containers.map((container) => optimizePropContainer(container, kind))
+      );
+    } else {
+      this.containers.set(kind, containers);
+    }
+    this.states.set(kind, "loaded");
   }
+}
+
+function pickVariant<T>(variants: readonly T[] | undefined, seed: number): T | undefined {
+  if (!variants || variants.length === 0) return undefined;
+  return variants[Math.abs(Math.trunc(seed)) % variants.length];
 }
 
 export function optimizePropContainer(

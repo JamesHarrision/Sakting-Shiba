@@ -38,6 +38,7 @@ function createFactory(): {
 
 const ALL_PROP_KINDS = [
   "building",
+  "skyline",
   "lamp",
   "fence",
   "box",

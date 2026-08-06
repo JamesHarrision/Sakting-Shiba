@@ -28,7 +28,7 @@ describe("scoped glTF runtime", () => {
     engine.dispose();
   });
 
-  it("collapses the 107-node building asset into one reusable mesh", async () => {
+  it("keeps the normalized building as one reusable mesh", async () => {
     const engine = new NullEngine();
     const scene = new Scene(engine);
     const assetPath = "src/assets/models/props/building.glb";
@@ -39,7 +39,7 @@ describe("scoped glTF runtime", () => {
     });
 
     expect(container.meshes.filter((mesh) => mesh.getTotalVertices() > 0).length)
-      .toBeGreaterThan(100);
+      .toBe(1);
     const template = optimizePropContainer(container, "building");
 
     expect(template.getTotalVertices()).toBeGreaterThan(0);

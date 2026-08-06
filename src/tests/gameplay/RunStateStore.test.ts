@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { GameEventBus } from "../../events/GameEventBus";
 import { RunStateStore } from "../../gameplay/RunStateStore";
+import { RUN_SPEED_CONFIG } from "../../config/gameplay/runSpeedConfig";
 
 describe("RunStateStore", () => {
   it("starts with the configured run state", () => {
@@ -13,7 +14,7 @@ describe("RunStateStore", () => {
       distance: 0,
       score: 0,
       coins: 0,
-      speed: 10,
+      speed: RUN_SPEED_CONFIG.initialSpeed,
       combo: 0,
       isGameOver: false
     });

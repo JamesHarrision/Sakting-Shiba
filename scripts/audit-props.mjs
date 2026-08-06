@@ -1,9 +1,21 @@
 // Temporary audit script for prop GLBs (run: node scripts/audit-props.mjs)
 import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { extname, join, resolve } from "node:path";
 
-const DIR = "src/assets/models/props";
-const files = readdirSync(DIR).filter((f) => f.endsWith(".glb"));
+const directories = process.argv.slice(2);
+const auditDirectories = directories.length > 0
+  ? directories.map((directory) => resolve(directory))
+  : [resolve("src/assets/models/props")];
+
+function collectGlbs(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return collectGlbs(path);
+    return extname(entry.name).toLowerCase() === ".glb" ? [path] : [];
+  });
+}
+
+const files = auditDirectories.flatMap(collectGlbs).sort();
 
 function parseGLB(path) {
   const buf = readFileSync(path);
@@ -44,8 +56,8 @@ function transformPoint(m, p) {
   ];
 }
 
-for (const file of files.sort()) {
-  const { json, bin } = parseGLB(join(DIR, file));
+for (const file of files) {
+  const { json } = parseGLB(file);
   const nodes = json.nodes ?? [];
   const scenes = json.scenes ?? [{ nodes: [] }];
   const sceneRoots = scenes[0]?.nodes ?? [];
@@ -106,9 +118,24 @@ for (const file of files.sort()) {
     const n = nodes[ri];
     return `${n.name ?? "node" + ri} trs=${JSON.stringify({ t: n.translation ?? [0,0,0], r: n.rotation ?? [0,0,0,1], s: n.scale ?? [1,1,1] })}`;
   });
+  const primitiveCount = (json.meshes ?? []).reduce(
+    (sum, mesh) => sum + mesh.primitives.length,
+    0
+  );
+  const triangleCount = (json.meshes ?? []).reduce(
+    (sum, mesh) => sum + mesh.primitives.reduce((meshSum, primitive) => {
+      const accessor = json.accessors?.[primitive.indices];
+      return meshSum + (accessor ? accessor.count / 3 : 0);
+    }, 0),
+    0
+  );
+  const externalImages = (json.images ?? [])
+    .map((image) => image.uri)
+    .filter(Boolean);
   console.log(
-    `\n${file}: ${meshesFound} mesh-node(s), ${(json.materials ?? []).length} mat(s), ${(json.textures ?? []).length} tex(s)` +
+    `\n${file}: ${meshesFound} mesh-node(s), ${primitiveCount} primitive(s), ${Math.round(triangleCount)} triangle(s), ${(json.materials ?? []).length} mat(s), ${(json.textures ?? []).length} tex(s)` +
     `\n  world bbox min=[${min.map(v=>v.toFixed(3)).join(",")}] max=[${max.map(v=>v.toFixed(3)).join(",")}] dims=[${dims.join(",")}]` +
-    `\n  roots: ${roots.join(" | ")}`
+    `\n  roots: ${roots.join(" | ")}` +
+    `\n  external images: ${externalImages.length === 0 ? "none" : externalImages.join(", ")}`
   );
 }
