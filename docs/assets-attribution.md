@@ -1,6 +1,33 @@
 # Asset Attribution
 
-This file records the source and license of every runtime asset used by Catboard Rush.
+This file records the source and license of every runtime asset used by Shiba Skating.
+
+## Kenney City Kit (Commercial)
+
+- Source: https://www.kenney.nl/assets/city-kit-commercial
+- Author: Kenney
+- License: Creative Commons CC0 1.0 Universal
+- Downloaded: 2026-08-06
+- Imported format: GLB
+- Intended use: near-city buildings and low-detail skyline variants
+
+## Kenney Retro Urban Kit
+
+- Source: https://www.kenney.nl/assets/retro-urban-kit
+- Author: Kenney
+- License: Creative Commons CC0 1.0 Universal
+- Downloaded: 2026-08-06
+- Imported format: GLB
+- Intended use: street furniture, industrial details, rooftop props, and trucks
+
+## Kenney Skyboxes
+
+- Source: https://kenney.nl/assets/skyboxes
+- Author: Kenney
+- License: Creative Commons CC0 1.0 Universal
+- Downloaded: 2026-08-06
+- Imported file: `skybox-morning.png`
+- Intended use: lightweight equirectangular morning sky dome
 
 ## Player Models (Milestone 2)
 

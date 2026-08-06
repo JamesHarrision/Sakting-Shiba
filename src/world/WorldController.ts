@@ -1,38 +1,50 @@
 import type { Scene } from "@babylonjs/core/scene";
-import type { Engine } from "@babylonjs/core/Engines/engine";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { MaterialsRegistry } from "../assets/MaterialsRegistry";
-import { PrototypeTrack } from "./track/PrototypeTrack";
-import { CityBackdrop } from "./environment/CityBackdrop";
-import { RooftopEnvironment } from "./environment/RooftopEnvironment";
+import { TrackManager } from "./track/TrackManager";
+import { PropAssetLoader } from "./props/PropAssetLoader";
+import { PropFactory } from "./props/PropFactory";
 import { LightingRig } from "./lighting/LightingRig";
 
 export class WorldController {
   readonly root: TransformNode;
-  private readonly track: PrototypeTrack;
-  private readonly cityBackdrop: CityBackdrop;
-  private readonly rooftopEnv: RooftopEnvironment;
+  readonly trackManager: TrackManager;
   readonly lighting: LightingRig;
+  private readonly propLoader: PropAssetLoader;
+  private readonly propFactory: PropFactory;
 
   constructor(scene: Scene, materials: MaterialsRegistry) {
     this.root = new TransformNode("world-root", scene);
     this.lighting = new LightingRig(scene);
-    this.track = new PrototypeTrack(scene, materials);
-    this.cityBackdrop = new CityBackdrop(scene, materials);
-    this.rooftopEnv = new RooftopEnvironment(scene, materials);
+    this.propLoader = new PropAssetLoader();
+    this.propLoader.setScene(scene);
+    this.propFactory = new PropFactory(scene, materials, this.propLoader);
+    this.trackManager = new TrackManager(scene, materials);
   }
 
   build(): void {
     this.lighting.setup();
-    this.track.build(this.root);
-    this.cityBackdrop.build(this.root);
-    this.rooftopEnv.build(this.root);
+    this.trackManager.build(this.root, this.propFactory);
+  }
+
+  /** Prefetches real prop GLBs; chunk props upgrade to them when present. */
+  async startAssetLoad(): Promise<void> {
+    await this.propLoader.prefetchAll();
+    this.trackManager.applyLoadedProps();
+  }
+
+  update(deltaSeconds: number, speed: number): void {
+    this.trackManager.update(deltaSeconds, speed);
+  }
+
+  reset(): void {
+    this.trackManager.reset();
   }
 
   dispose(): void {
-    this.track.dispose();
-    this.cityBackdrop.dispose();
-    this.rooftopEnv.dispose();
+    // Chunks dispose their prop instances before the shared containers go away
+    this.trackManager.dispose();
+    this.propLoader.dispose();
     this.lighting.dispose();
     this.root.dispose();
   }

@@ -6,6 +6,47 @@ import { PlayerController } from "../../gameplay/PlayerController";
 import { createEmptyInputSnapshot } from "../../input/inputSnapshot";
 
 describe("PlayerController", () => {
+  it("jumps higher while Spring Paws is active", () => {
+    const normal = new PlayerController(new GameEventBus());
+    const boosted = new PlayerController(new GameEventBus());
+    boosted.setJumpMultiplier(1.65);
+    const jumpInput = { ...createEmptyInputSnapshot(), jump: true };
+
+    const normalJump = normal.update(jumpInput, 1 / 60);
+    const boostedJump = boosted.update(jumpInput, 1 / 60);
+
+    expect(boostedJump.verticalVelocity).toBeGreaterThan(
+      normalJump.verticalVelocity
+    );
+  });
+
+  it("boosts the current ascent when Spring Paws is collected mid-jump", () => {
+    const controller = new PlayerController(new GameEventBus());
+    const jumpInput = { ...createEmptyInputSnapshot(), jump: true };
+    controller.update(jumpInput, 1 / 60);
+    const velocityBeforeSpring = controller.getSnapshot().verticalVelocity;
+
+    controller.setJumpMultiplier(2);
+
+    expect(controller.getSnapshot().verticalVelocity).toBeCloseTo(
+      velocityBeforeSpring * Math.sqrt(2)
+    );
+  });
+
+  it("enters rocket flight and falls after the effect ends", () => {
+    const controller = new PlayerController(new GameEventBus());
+    controller.setFlightHeight(4);
+    for (let index = 0; index < 60; index += 1) {
+      controller.update(createEmptyInputSnapshot(), 1 / 60);
+    }
+    expect(controller.getSnapshot().state).toBe("flying");
+    expect(controller.getSnapshot().y).toBeGreaterThan(3.8);
+
+    controller.setFlightHeight(null);
+    controller.update(createEmptyInputSnapshot(), 1 / 60);
+    expect(controller.getSnapshot().state).toBe("jumping");
+  });
+
   it("starts on the center lane", () => {
     const controller = new PlayerController(new GameEventBus());
 

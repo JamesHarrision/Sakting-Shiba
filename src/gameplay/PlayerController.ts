@@ -36,6 +36,8 @@ export class PlayerController {
   private laneSwitchStartX = 0;
   private laneSwitchElapsed = 0;
   private crouchTimeRemaining = 0;
+  private flightHeight: number | null = null;
+  private jumpMultiplier = 1;
 
   constructor(
     private readonly eventBus: GameEventBus,
@@ -47,13 +49,23 @@ export class PlayerController {
   }
 
   update(input: InputSnapshot, deltaSeconds: number): PlayerControllerSnapshot {
+    if (this.state === "dead") {
+      return this.getSnapshot();
+    }
     const safeDeltaSeconds = Math.max(0, deltaSeconds);
 
     this.handleLaneInput(input);
-    this.handleJumpInput(input);
-    this.handleCrouchInput(input);
+    if (this.flightHeight === null) {
+      this.handleJumpInput(input);
+      this.handleCrouchInput(input);
+    }
     this.updateLaneSwitch(safeDeltaSeconds);
-    this.updateVerticalMovement(safeDeltaSeconds);
+    if (this.flightHeight === null) {
+      this.updateVerticalMovement(safeDeltaSeconds);
+    } else {
+      this.y = smoothTo(this.y, this.flightHeight, 6, safeDeltaSeconds);
+      this.verticalVelocity = 0;
+    }
     this.updateCrouch(safeDeltaSeconds);
     this.setState(this.resolveState());
 
@@ -68,7 +80,34 @@ export class PlayerController {
     this.laneSwitchStartX = this.x;
     this.laneSwitchElapsed = 0;
     this.crouchTimeRemaining = 0;
+    this.flightHeight = null;
+    this.jumpMultiplier = 1;
     this.setState("running");
+  }
+
+  kill(): void {
+    if (this.state === "dead") return;
+    this.eventBus.emit("PLAYER_HIT", { shielded: false });
+    this.setState("dead");
+  }
+
+  setFlightHeight(height: number | null): void {
+    this.flightHeight = height === null ? null : Math.max(0, height);
+    if (this.flightHeight !== null) {
+      this.crouchTimeRemaining = 0;
+      this.verticalVelocity = 0;
+    }
+  }
+
+  setJumpMultiplier(multiplier: number): void {
+    const nextMultiplier = Math.max(1, multiplier);
+    if (
+      this.verticalVelocity > 0 &&
+      nextMultiplier > this.jumpMultiplier
+    ) {
+      this.verticalVelocity *= Math.sqrt(nextMultiplier / this.jumpMultiplier);
+    }
+    this.jumpMultiplier = nextMultiplier;
   }
 
   getSnapshot(): PlayerControllerSnapshot {
@@ -88,8 +127,9 @@ export class PlayerController {
     };
   }
 
-  getVisualSnapshot(): PlayerVisualSnapshot {
-    const snapshot = this.getSnapshot();
+  getVisualSnapshot(
+    snapshot: Readonly<PlayerControllerSnapshot> = this.getSnapshot()
+  ): PlayerVisualSnapshot {
     const targetX = LANE_X_POSITIONS[snapshot.lane];
 
     return Object.freeze({
@@ -108,10 +148,9 @@ export class PlayerController {
   }
 
   getCameraTargetSnapshot(
-    isPaused = false
+    isPaused = false,
+    snapshot: Readonly<PlayerControllerSnapshot> = this.getSnapshot()
   ): Readonly<PlayerCameraTargetSnapshot> {
-    const snapshot = this.getSnapshot();
-
     return Object.freeze({
       targetX: snapshot.x,
       targetY: snapshot.y,
@@ -149,7 +188,8 @@ export class PlayerController {
     }
 
     this.verticalVelocity = Math.sqrt(
-      2 * Math.abs(GAMEPLAY_CONFIG.gravity) * GAMEPLAY_CONFIG.jumpHeight
+      2 * Math.abs(GAMEPLAY_CONFIG.gravity) *
+        GAMEPLAY_CONFIG.jumpHeight * this.jumpMultiplier
     );
 
     this.eventBus.emit("PLAYER_JUMPED", {
@@ -225,6 +265,9 @@ export class PlayerController {
   }
 
   private resolveState(): PlayerState {
+    if (this.flightHeight !== null) {
+      return "flying";
+    }
     if (!this.isGrounded()) {
       return "jumping";
     }
@@ -276,4 +319,8 @@ function lerp(from: number, to: number, progress: number): number {
 
 function smoothStep(progress: number): number {
   return progress * progress * (3 - 2 * progress);
+}
+
+function smoothTo(current: number, target: number, speed: number, dt: number): number {
+  return current + (target - current) * (1 - Math.exp(-speed * dt));
 }

@@ -1,10 +1,12 @@
 import type { Scene } from "@babylonjs/core/scene";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import type { AnimationGroup } from "@babylonjs/core/Animations/animationGroup";
-import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
+import {
+  ImportMeshAsync,
+  type ISceneLoaderAsyncResult
+} from "@babylonjs/core/Loading/sceneLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
-import type { AssetContainer } from "@babylonjs/core/assetContainer";
-import "@babylonjs/loaders/glTF";
+import { ensureGltfLoader } from "./registerGltfLoader";
 import {
   getAssetEntry,
   PLAYER_ASSET_IDS,
@@ -30,7 +32,7 @@ export interface PlayerModelInstance {
  * preserving the imported node hierarchy (node matrix / TRS are kept).
  */
 export class PlayerAssetLoader {
-  private readonly containers = new Map<PlayerAssetId, AssetContainer>();
+  private readonly loadedAssets = new Map<PlayerAssetId, ISceneLoaderAsyncResult>();
   private readonly instances = new Map<PlayerAssetId, PlayerModelInstance>();
   private readonly loadStates = new Map<PlayerAssetId, AssetLoadState>();
   private readonly loadErrors = new Map<PlayerAssetId, string>();
@@ -76,25 +78,21 @@ export class PlayerAssetLoader {
 
   async preload(id: PlayerAssetId): Promise<void> {
     this.assertActive();
-    if (this.containers.has(id)) return;
+    if (this.loadedAssets.has(id)) return;
 
     const entry = getAssetEntry(id);
     this.loadStates.set(id, "loading");
     this.loadErrors.delete(id);
 
     try {
-      const container = await SceneLoader.LoadAssetContainerAsync(
-        entry.url,
-        undefined,
-        this.scene,
-      );
+      await ensureGltfLoader();
+      const loaded = await ImportMeshAsync(entry.url, this.scene);
       if (this.disposed) {
-        container.dispose();
+        disposeLoadedAssets(loaded);
         throw new Error("PlayerAssetLoader was disposed while loading.");
       }
-      // Remove from scene: instances will be attached on demand
-      container.removeAllFromScene();
-      this.containers.set(id, container);
+      for (const mesh of loaded.meshes) mesh.setEnabled(false);
+      this.loadedAssets.set(id, loaded);
       this.loadStates.set(id, "loaded");
     } catch (err) {
       if (!this.disposed) {
@@ -121,26 +119,27 @@ export class PlayerAssetLoader {
   }
 
   isLoaded(id: PlayerAssetId): boolean {
-    return this.containers.has(id);
+    return this.loadedAssets.has(id);
   }
 
   areAllLoaded(): boolean {
     return Object.values(PLAYER_ASSET_IDS).every((id) =>
-      this.containers.has(id as PlayerAssetId),
+      this.loadedAssets.has(id as PlayerAssetId),
     );
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    const instantiatedIds = new Set(this.instances.keys());
     for (const [, instance] of this.instances) {
       instance.dispose();
     }
     this.instances.clear();
-    for (const [, container] of this.containers) {
-      container.dispose();
+    for (const [id, loaded] of this.loadedAssets) {
+      if (!instantiatedIds.has(id)) disposeLoadedAssets(loaded);
     }
-    this.containers.clear();
+    this.loadedAssets.clear();
     this.loadStates.clear();
     this.loadErrors.clear();
   }
@@ -152,21 +151,18 @@ export class PlayerAssetLoader {
     parent: TransformNode,
   ): Promise<PlayerModelInstance> {
     this.assertActive();
-    if (!this.containers.has(id)) {
+    if (!this.loadedAssets.has(id)) {
       await this.preload(id);
     }
 
     this.assertActive();
 
-    const container = this.containers.get(id);
-    if (!container) {
+    const loaded = this.loadedAssets.get(id);
+    if (!loaded) {
       throw new Error(
         `Asset ${id} not available. Load state: ${this.loadStates.get(id)}`,
       );
     }
-
-    // Bring the whole imported hierarchy into the scene
-    container.addAllToScene();
 
     // Fresh instance root under the calibration parent
     const instanceRoot = new TransformNode(`${id}-instance-root`, this.scene);
@@ -177,11 +173,20 @@ export class PlayerAssetLoader {
     // setParent() — setParent preserves the OLD world transform (identity),
     // which would cancel the calibration hierarchy and gameplay root motion.
     const topLevel: TransformNode[] = [];
-    for (const node of container.transformNodes) {
-      if (!node.parent) topLevel.push(node);
+    const importedNodes = new Set<TransformNode>([
+      ...loaded.transformNodes,
+      ...loaded.meshes
+    ]);
+    for (const node of loaded.transformNodes) {
+      if (!node.parent || !importedNodes.has(node.parent as TransformNode)) {
+        topLevel.push(node);
+      }
     }
-    for (const mesh of container.meshes) {
-      if (!mesh.parent && !topLevel.includes(mesh)) {
+    for (const mesh of loaded.meshes) {
+      if (
+        (!mesh.parent || !importedNodes.has(mesh.parent as TransformNode)) &&
+        !topLevel.includes(mesh)
+      ) {
         topLevel.push(mesh);
       }
     }
@@ -192,16 +197,17 @@ export class PlayerAssetLoader {
     let instanceDisposed = false;
     const instance: PlayerModelInstance = {
       root: instanceRoot,
-      meshes: container.meshes as AbstractMesh[],
-      animationGroups: container.animationGroups as AnimationGroup[],
+      meshes: loaded.meshes as AbstractMesh[],
+      animationGroups: loaded.animationGroups as AnimationGroup[],
       dispose: () => {
         if (instanceDisposed) return;
         instanceDisposed = true;
-        container.removeAllFromScene();
-        instanceRoot.dispose();
+        for (const group of loaded.animationGroups) group.dispose();
+        instanceRoot.dispose(false, false);
       },
     };
 
+    for (const mesh of loaded.meshes) mesh.setEnabled(true);
     this.instances.set(id, instance);
     return instance;
   }
@@ -209,6 +215,19 @@ export class PlayerAssetLoader {
   private assertActive(): void {
     if (this.disposed) {
       throw new Error("PlayerAssetLoader has already been disposed.");
+    }
+  }
+}
+
+function disposeLoadedAssets(loaded: ISceneLoaderAsyncResult): void {
+  for (const group of loaded.animationGroups) group.dispose();
+  const importedNodes = new Set<TransformNode>([
+    ...loaded.transformNodes,
+    ...loaded.meshes
+  ]);
+  for (const node of importedNodes) {
+    if (!node.parent || !importedNodes.has(node.parent as TransformNode)) {
+      node.dispose(false, false);
     }
   }
 }

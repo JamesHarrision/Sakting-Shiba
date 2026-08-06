@@ -6,7 +6,15 @@ export interface WorldVisualConfig {
   trackThickness: number;
   laneMarkerWidth: number;
   rooftopEdgeHalfWidth: number;
+  cityFringeWidth: number;
   guardRailHeight: number;
+  /** Infinite track: length of one recycled chunk */
+  trackChunkLength: number;
+  /** Infinite track: number of pooled chunks (covers camera + fog range) */
+  trackChunkCount: number;
+  /** Procedural fallback colors for spawned gameplay items. */
+  spawnObstacleColor: string;
+  spawnPickupColor: string;
   cameraHeight: number;
   cameraDistance: number;
   cameraLookAhead: number;
@@ -23,6 +31,8 @@ export interface WorldVisualConfig {
   ambientIntensity: number;
   directionalIntensity: number;
   shadowMapSize: number;
+  enableDynamicShadows: boolean;
+  debugHudRefreshSeconds: number;
   showDebugHud: boolean;
   enableVignette: boolean;
   enableBloom: boolean;
@@ -34,7 +44,12 @@ export const WORLD_VISUAL_CONFIG: WorldVisualConfig = {
   trackThickness: 0.15,
   laneMarkerWidth: 0.06,
   rooftopEdgeHalfWidth: 1.4,
+  cityFringeWidth: 10,
   guardRailHeight: 0.35,
+  trackChunkLength: 32,
+  trackChunkCount: 5,
+  spawnObstacleColor: "#D05545",
+  spawnPickupColor: "#E8B048",
   cameraHeight: 5.6,
   cameraDistance: 10.5,
   cameraLookAhead: 9,
@@ -44,14 +59,16 @@ export const WORLD_VISUAL_CONFIG: WorldVisualConfig = {
   cameraTargetYOffset: 1.15,
   fogMode: "exp2",
   fogStart: 45,
-  fogEnd: 110,
+  fogEnd: 96,
   fogDensity: 0.012,
   skyTopColor: "#8EA4B8",
   skyHorizonColor: "#E8C9A0",
   ambientIntensity: 0.45,
   directionalIntensity: 1.05,
   shadowMapSize: 1024,
-  showDebugHud: true,
+  enableDynamicShadows: false,
+  debugHudRefreshSeconds: 0.5,
+  showDebugHud: false,
   enableVignette: false,
   enableBloom: false,
 };

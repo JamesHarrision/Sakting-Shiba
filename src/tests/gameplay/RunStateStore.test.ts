@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { GameEventBus } from "../../events/GameEventBus";
 import { RunStateStore } from "../../gameplay/RunStateStore";
+import { RUN_SPEED_CONFIG } from "../../config/gameplay/runSpeedConfig";
 
 describe("RunStateStore", () => {
   it("starts with the configured run state", () => {
@@ -12,31 +13,47 @@ describe("RunStateStore", () => {
     expect(store.getSnapshot()).toMatchObject({
       distance: 0,
       score: 0,
-      fish: 0,
-      speed: 10,
+      coins: 0,
+      speed: RUN_SPEED_CONFIG.initialSpeed,
       combo: 0,
       isGameOver: false
     });
   });
 
-  it("updates fish and score through events", () => {
+  it("updates coins and score through events", () => {
     const eventBus = new GameEventBus();
-    const fishHandler = vi.fn();
+    const coinHandler = vi.fn();
     const scoreHandler = vi.fn();
     const store = new RunStateStore(eventBus);
 
-    eventBus.on("FISH_COLLECTED", fishHandler);
+    eventBus.on("COIN_COLLECTED", coinHandler);
     eventBus.on("SCORE_CHANGED", scoreHandler);
     store.startRun();
-    store.collectFish(3);
+    store.collectCoins(3);
 
-    expect(store.getSnapshot().fish).toBe(3);
+    expect(store.getSnapshot().coins).toBe(3);
     expect(store.getSnapshot().score).toBe(30);
-    expect(fishHandler).toHaveBeenCalledWith({ amount: 3, totalFish: 3 });
+    expect(coinHandler).toHaveBeenCalledWith({ amount: 3, totalCoins: 3 });
     expect(scoreHandler).toHaveBeenLastCalledWith({
       score: 30,
       distance: 0,
       combo: 0
+    });
+  });
+
+  it("multiplies only score earned while Lucky Star is active", () => {
+    const store = new RunStateStore(new GameEventBus());
+    store.startRun();
+    store.setScoreMultiplier(2);
+    store.addDistance(5);
+    store.collectCoins(1);
+    store.setScoreMultiplier(1);
+    store.addDistance(5);
+
+    expect(store.getSnapshot()).toMatchObject({
+      distance: 10,
+      coins: 1,
+      score: 35
     });
   });
 
@@ -52,5 +69,27 @@ describe("RunStateStore", () => {
 
     expect(runEndedHandler).toHaveBeenCalledTimes(1);
     expect(store.getSnapshot().isGameOver).toBe(true);
+  });
+
+  it("emits score changes only when the visible score changes", () => {
+    const eventBus = new GameEventBus();
+    const scoreHandler = vi.fn();
+    const store = new RunStateStore(eventBus);
+
+    eventBus.on("SCORE_CHANGED", scoreHandler);
+    store.startRun();
+    scoreHandler.mockClear();
+
+    for (let frame = 0; frame < 60; frame += 1) {
+      store.addDistance(0.01);
+    }
+
+    expect(store.getSnapshot().distance).toBeCloseTo(0.6);
+    expect(store.getSnapshot().score).toBe(0);
+    expect(scoreHandler).not.toHaveBeenCalled();
+
+    store.addDistance(0.41);
+    expect(store.getSnapshot().score).toBe(1);
+    expect(scoreHandler).toHaveBeenCalledTimes(1);
   });
 });

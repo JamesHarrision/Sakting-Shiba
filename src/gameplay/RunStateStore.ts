@@ -1,14 +1,18 @@
-import { GAMEPLAY_CONFIG } from "../config/gameplay/gameplayConfig";
+import { RUN_SPEED_CONFIG } from "../config/gameplay/runSpeedConfig";
 import type { RunState } from "../contracts/gameplay";
 import { GameEventBus } from "../events/GameEventBus";
 
 export class RunStateStore {
   private state: RunState = RunStateStore.createInitialState();
+  private scoreMultiplier = 1;
+  private distanceScoreRemainder = 0;
 
   constructor(private readonly eventBus: GameEventBus) {}
 
   startRun(): void {
     this.state = RunStateStore.createInitialState();
+    this.scoreMultiplier = 1;
+    this.distanceScoreRemainder = 0;
     this.eventBus.emit("RUN_STARTED", { state: this.getSnapshot() });
     this.emitScoreChanged();
   }
@@ -27,20 +31,24 @@ export class RunStateStore {
     }
 
     this.state.distance += deltaDistance;
-    this.state.score = Math.floor(this.state.distance) + this.state.fish * 10;
+    this.distanceScoreRemainder += deltaDistance * this.scoreMultiplier;
+    const earnedScore = Math.floor(this.distanceScoreRemainder);
+    if (earnedScore <= 0) return;
+    this.distanceScoreRemainder -= earnedScore;
+    this.state.score += earnedScore;
     this.emitScoreChanged();
   }
 
-  collectFish(amount = 1): void {
+  collectCoins(amount = 1): void {
     if (this.state.isGameOver || amount <= 0) {
       return;
     }
 
-    this.state.fish += amount;
-    this.state.score += amount * 10;
-    this.eventBus.emit("FISH_COLLECTED", {
+    this.state.coins += amount;
+    this.state.score += amount * 10 * this.scoreMultiplier;
+    this.eventBus.emit("COIN_COLLECTED", {
       amount,
-      totalFish: this.state.fish
+      totalCoins: this.state.coins
     });
     this.emitScoreChanged();
   }
@@ -48,8 +56,12 @@ export class RunStateStore {
   setSpeed(speed: number): void {
     this.state.speed = Math.min(
       Math.max(speed, 0),
-      GAMEPLAY_CONFIG.maximumSpeed
+      RUN_SPEED_CONFIG.maximumSpeed * 1.5
     );
+  }
+
+  setScoreMultiplier(multiplier: number): void {
+    this.scoreMultiplier = Math.max(1, multiplier);
   }
 
   setCombo(combo: number): void {
@@ -74,8 +86,8 @@ export class RunStateStore {
     return {
       distance: 0,
       score: 0,
-      fish: 0,
-      speed: GAMEPLAY_CONFIG.initialSpeed,
+      coins: 0,
+      speed: RUN_SPEED_CONFIG.initialSpeed,
       combo: 0,
       isGameOver: false
     };

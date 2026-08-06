@@ -8,11 +8,13 @@ import type { PlayerCameraTargetSnapshot } from "../contracts/player-camera-targ
 import type { PlayerColliderSnapshot } from "../contracts/player-collider.contract";
 import type { PlayerRigContract } from "../contracts/player-rig.contract";
 import type { PlayerVisualSnapshot } from "../contracts/player-visual.contract";
+import type { TrackManager } from "../world/track/TrackManager";
 import { PlayerRig } from "../player/PlayerRig";
 import { DebugHud } from "../ui/debug/DebugHud";
 import { WorldController } from "../world/WorldController";
 import { RunnerCameraController } from "../world/camera/RunnerCameraController";
 import { PlayerVisualController } from "../world/player/PlayerVisualController";
+import { FrameRateStats } from "../performance/FrameRateStats";
 
 export class RunScene {
   private scene!: Scene;
@@ -25,11 +27,12 @@ export class RunScene {
   private materials!: MaterialsRegistry;
   private fpsFrames = 0;
   private fpsTime = 0;
-  private currentFps = 60;
+  private readonly frameRateStats = new FrameRateStats();
   private isPlayerRigDebugVisible = false;
 
   create(engine: Engine, loader: PlayerAssetLoader): Scene {
     this.scene = new Scene(engine);
+    this.scene.skipPointerMovePicking = true;
     this.materials = new MaterialsRegistry(this.scene);
     this.playerAssetLoader = loader;
     this.playerAssetLoader.setScene(this.scene);
@@ -62,7 +65,10 @@ export class RunScene {
   }
 
   async startAssetLoad(): Promise<void> {
-    await this.playerVisual.startModelLoad();
+    await Promise.all([
+      this.worldController.startAssetLoad(),
+      this.playerVisual.startModelLoad()
+    ]);
 
     if (this.playerVisual.isModelLoaded) {
       for (const mesh of this.playerVisual.getShadowMeshes()) {
@@ -75,11 +81,13 @@ export class RunScene {
     deltaSeconds: number,
     playerSnap: Readonly<PlayerVisualSnapshot>,
     colliderSnap: Readonly<PlayerColliderSnapshot>,
-    cameraSnap: Readonly<PlayerCameraTargetSnapshot>
+    cameraSnap: Readonly<PlayerCameraTargetSnapshot>,
+    speed: number
   ): void {
     this.playerRig.applyGameplayState(playerSnap, colliderSnap);
     this.playerVisual.applySnapshot(playerSnap);
     this.playerVisual.update(deltaSeconds);
+    this.worldController.update(deltaSeconds, speed);
 
     this.cameraController.update(deltaSeconds, {
       targetX: cameraSnap.targetX,
@@ -87,28 +95,55 @@ export class RunScene {
       playerState: playerSnap.state
     });
 
-    this.fpsFrames++;
+    this.fpsFrames += 1;
     this.fpsTime += deltaSeconds;
-    if (this.fpsTime >= 0.5) {
-      this.currentFps = this.fpsFrames / this.fpsTime;
+    if (this.fpsTime >= WORLD_VISUAL_CONFIG.debugHudRefreshSeconds) {
+      this.frameRateStats.addWindow(this.fpsFrames, this.fpsTime);
       this.fpsFrames = 0;
       this.fpsTime = 0;
-    }
+      const performance = this.frameRateStats.getSnapshot();
 
-    const activeMeshes = this.scene.meshes.filter((mesh) => mesh.isEnabled()).length;
-    this.debugHud.update(this.currentFps, playerSnap, activeMeshes, {
-      catLoaded: this.playerVisual.catAssetLoaded,
-      boardLoaded: this.playerVisual.boardAssetLoaded,
-      isModelFull: this.playerVisual.isModelLoaded,
-      catState: this.playerAssetLoader.getLoadState("player.cat"),
-      boardState: this.playerAssetLoader.getLoadState("player.skateboard")
-    });
+      this.debugHud.update(
+        {
+          ...performance,
+          hardwareScalingLevel: this.scene
+            .getEngine()
+            .getHardwareScalingLevel()
+        },
+        playerSnap,
+        this.scene.getActiveMeshes().length,
+        {
+          catLoaded: this.playerVisual.catAssetLoaded,
+          boardLoaded: this.playerVisual.boardAssetLoaded,
+          isModelFull: this.playerVisual.isModelLoaded,
+          catState: this.playerAssetLoader.getLoadState("player.cat"),
+          boardState: this.playerAssetLoader.getLoadState("player.skateboard")
+        },
+        this.worldController.trackManager.getDebugStats()
+      );
+    }
   }
 
   reset(): void {
+    this.fpsFrames = 0;
+    this.fpsTime = 0;
+    this.frameRateStats.reset();
     this.playerRig.reset();
     this.playerVisual.reset();
     this.cameraController.reset();
+    this.worldController.reset();
+  }
+
+  getTrackManager(): TrackManager {
+    return this.worldController.trackManager;
+  }
+
+  applyCosmetics(catColor: string, boardColor: string): void {
+    this.playerVisual.applyCosmetics(catColor, boardColor);
+  }
+
+  addCameraImpact(amount: number): void {
+    this.cameraController.addImpact(amount);
   }
 
   toggleDebugHud(): void {

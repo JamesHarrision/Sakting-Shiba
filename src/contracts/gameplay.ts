@@ -4,6 +4,7 @@ export type PlayerState =
   | "running"
   | "switching_lane"
   | "jumping"
+  | "flying"
   | "crouching"
   | "hit"
   | "dead";
@@ -11,7 +12,7 @@ export type PlayerState =
 export interface RunState {
   distance: number;
   score: number;
-  fish: number;
+  coins: number;
   speed: number;
   combo: number;
   isGameOver: boolean;
@@ -23,23 +24,4 @@ export interface InputSnapshot {
   jump: boolean;
   crouch: boolean;
   pause: boolean;
-}
-
-export type SpawnItemKind = "obstacle" | "pickup" | "ramp" | "rail";
-
-export interface SpawnItem {
-  type: SpawnItemKind;
-  assetId: string;
-}
-
-export interface SpawnRow {
-  offsetZ: number;
-  lanes: [SpawnItem | null, SpawnItem | null, SpawnItem | null];
-}
-
-export interface SpawnPattern {
-  id: string;
-  minimumDifficulty: number;
-  weight: number;
-  rows: SpawnRow[];
 }

@@ -1,16 +1,24 @@
 import { Scene } from "@babylonjs/core/scene";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
+import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { DirectionalLight } from "@babylonjs/core/Lights/directionalLight";
 import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
 import { Color4 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { Texture } from "@babylonjs/core/Materials/Textures/texture";
 import { WORLD_VISUAL_CONFIG, hexToColor3 } from "../../config/visual/world-visual.config";
+import skyboxMorningUrl from "../../assets/textures/skybox-morning.png?url";
 
 export class LightingRig {
   private directional!: DirectionalLight;
   private ambient!: HemisphericLight;
   private shadowGenerator: ShadowGenerator | null = null;
+  private skyDome: Mesh | null = null;
+  private skyMaterial: StandardMaterial | null = null;
+  private skyTexture: Texture | null = null;
 
   constructor(private readonly scene: Scene) {}
 
@@ -21,6 +29,7 @@ export class LightingRig {
 
     // Clear color (sky)
     this.scene.clearColor = new Color4(skyHorizon.r, skyHorizon.g, skyHorizon.b, 1);
+    this.setupSkyDome();
 
     // Fog
     this.scene.fogMode = cfg.fogMode === "exp2" ? Scene.FOGMODE_EXP2 : Scene.FOGMODE_LINEAR;
@@ -43,11 +52,16 @@ export class LightingRig {
     this.directional.position = new Vector3(12, 20, -15);
     this.directional.intensity = cfg.directionalIntensity;
 
-    // Shadows for player only
+    if (!cfg.enableDynamicShadows) {
+      return;
+    }
+
+    // Dynamic shadows are optional; the default performance preset uses the
+    // cheaper player blob shadow instead.
     this.shadowGenerator = new ShadowGenerator(1024, this.directional);
     this.shadowGenerator.useBlurExponentialShadowMap = false;
     this.shadowGenerator.usePercentageCloserFiltering = true;
-    this.shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_MEDIUM;
+    this.shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_LOW;
     this.shadowGenerator.bias = 0.0005;
     this.shadowGenerator.normalBias = 0.02;
     this.shadowGenerator.setDarkness(0.55);
@@ -58,8 +72,35 @@ export class LightingRig {
   }
 
   dispose(): void {
+    this.skyDome?.dispose();
+    this.skyMaterial?.dispose();
+    this.skyTexture?.dispose();
     this.shadowGenerator?.dispose();
     this.directional?.dispose();
     this.ambient?.dispose();
+  }
+
+  private setupSkyDome(): void {
+    this.skyDome = MeshBuilder.CreateSphere(
+      "sky-dome",
+      { diameter: 420, segments: 16, sideOrientation: Mesh.BACKSIDE },
+      this.scene
+    );
+    this.skyDome.infiniteDistance = true;
+    this.skyDome.isPickable = false;
+    this.skyDome.applyFog = false;
+
+    this.skyTexture = new Texture(skyboxMorningUrl, this.scene, false, true);
+    this.skyTexture.coordinatesMode = Texture.EXPLICIT_MODE;
+    this.skyTexture.uScale = -1;
+
+    this.skyMaterial = new StandardMaterial("sky-dome-material", this.scene);
+    this.skyMaterial.disableLighting = true;
+    this.skyMaterial.backFaceCulling = false;
+    this.skyMaterial.fogEnabled = false;
+    this.skyMaterial.emissiveTexture = this.skyTexture;
+    this.skyMaterial.diffuseColor.set(0, 0, 0);
+    this.skyMaterial.specularColor.set(0, 0, 0);
+    this.skyDome.material = this.skyMaterial;
   }
 }

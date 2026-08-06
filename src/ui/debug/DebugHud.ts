@@ -1,6 +1,8 @@
 import { WORLD_VISUAL_CONFIG } from "../../config/visual/world-visual.config";
 import type { PlayerVisualSnapshot } from "../../contracts/player-visual.contract";
 import type { AssetLoadState } from "../../assets/PlayerAssetLoader";
+import type { TrackDebugStats } from "../../contracts/track.contract";
+import type { FrameRateSnapshot } from "../../performance/FrameRateStats";
 
 export interface DebugAssetInfo {
   catLoaded: boolean;
@@ -8,6 +10,10 @@ export interface DebugAssetInfo {
   isModelFull: boolean;
   catState: AssetLoadState;
   boardState: AssetLoadState;
+}
+
+export interface DebugPerformanceInfo extends FrameRateSnapshot {
+  readonly hardwareScalingLevel: number;
 }
 
 export class DebugHud {
@@ -43,15 +49,17 @@ export class DebugHud {
   }
 
   update(
-    fps: number,
+    performance: Readonly<DebugPerformanceInfo>,
     snap: PlayerVisualSnapshot,
     activeMeshes: number,
     assetInfo?: DebugAssetInfo,
+    trackInfo?: TrackDebugStats,
   ): void {
     if (!this.enabled || !this.container) return;
 
     const lines = [
-      `FPS: ${fps.toFixed(0)}`,
+      `FPS: ${performance.currentFps.toFixed(0)} | min ${performance.minimumFps.toFixed(0)} | avg ${performance.averageFps.toFixed(0)}`,
+      `Render scale: ${(100 / performance.hardwareScalingLevel).toFixed(0)}%`,
       `Lane: ${snap.laneIndex}`,
       `State: ${snap.state}`,
       `Y: ${snap.positionY.toFixed(2)}`,
@@ -65,6 +73,15 @@ export class DebugHud {
         `Cat: ${catMark} (${assetInfo.catState})`,
         `Board: ${boardMark} (${assetInfo.boardState})`,
         assetInfo.isModelFull ? "Model: LOADED" : "Model: fallback",
+      );
+    }
+
+    if (trackInfo) {
+      lines.push(
+        `Chunks: ${trackInfo.activeChunks} (pooled ${trackInfo.pooledChunks})`,
+        `Spawns: ${trackInfo.activeObstacles}obs ${trackInfo.activePickups}pick`,
+        `Speed: ${trackInfo.speed.toFixed(1)}`,
+        `FurthestZ: ${trackInfo.furthestChunkZ.toFixed(0)}`,
       );
     }
 

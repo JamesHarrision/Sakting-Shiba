@@ -2,6 +2,7 @@ import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import type { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { Scene } from "@babylonjs/core/scene";
+import { Color3 } from "@babylonjs/core/Maths/math.color";
 
 import type { MaterialsRegistry } from "../../assets/MaterialsRegistry";
 import type { PlayerAssetLoader } from "../../assets/PlayerAssetLoader";
@@ -12,6 +13,7 @@ import { PlayerModelView } from "../../player/visual/PlayerModelView";
 import { LandingDustEffect } from "../../vfx/LandingDustEffect";
 import { PlayerBlobShadow } from "../../vfx/PlayerBlobShadow";
 import { ProceduralPlayer } from "./ProceduralPlayer";
+import { tintMaterial } from "./materialTint";
 
 const CFG = PLAYER_MODEL_CONFIG;
 const RUN_BOB_SPEED = 8;
@@ -19,6 +21,8 @@ const RUN_BOB_AMOUNT = 0.035;
 const LEAN_SPEED = 10;
 const BOARD_TILT_SPEED = 12;
 const SQUASH_RECOVER_SPEED = 14;
+const DEFAULT_CAT_COLOR = "#E87848";
+const DEFAULT_BOARD_COLOR = "#68503E";
 
 export class PlayerVisualController {
   readonly player: ProceduralPlayer;
@@ -46,6 +50,8 @@ export class PlayerVisualController {
   private catLoaded = false;
   private boardLoaded = false;
   private disposed = false;
+  private catColor = DEFAULT_CAT_COLOR;
+  private boardColor = DEFAULT_BOARD_COLOR;
 
   constructor(
     scene: Scene,
@@ -93,6 +99,7 @@ export class PlayerVisualController {
         this.player.setEnabled(true);
         this.playerRig.setVisualLoadState("fallback");
       }
+      this.applyCosmetics(this.catColor, this.boardColor);
     });
 
     return this.modelLoadPromise;
@@ -118,6 +125,31 @@ export class PlayerVisualController {
     return this.isModelLoaded ? this.modelView.allMeshes : this.player.meshes;
   }
 
+  applyCosmetics(catColor: string, boardColor: string): void {
+    this.catColor = catColor;
+    this.boardColor = boardColor;
+    this.tintMeshes(
+      [
+        this.player.catBody,
+        this.player.catHead,
+        this.player.leftEar,
+        this.player.rightEar,
+        this.player.tail,
+        ...this.modelView.catMeshes
+      ],
+      catColor,
+      catColor === DEFAULT_CAT_COLOR
+    );
+    this.tintMeshes(
+      [
+        ...this.player.meshes.filter((mesh) => mesh.name.startsWith("board-")),
+        ...this.modelView.boardMeshes
+      ],
+      boardColor,
+      boardColor === DEFAULT_BOARD_COLOR
+    );
+  }
+
   applySnapshot(snapshot: Readonly<PlayerVisualSnapshot>): void {
     this.state = snapshot;
     this.blobShadow.update(snapshot.positionY);
@@ -136,6 +168,9 @@ export class PlayerVisualController {
         break;
       case "jumping":
         this.animateJumping(dt);
+        break;
+      case "flying":
+        this.animateFlying(dt);
         break;
       case "crouching":
         this.animateCrouching(dt);
@@ -230,6 +265,20 @@ export class PlayerVisualController {
     } else {
       this.player.boardRoot.rotation.x = (this.currentTilt * Math.PI) / 180;
       this.player.catBody.scaling.y = 1.3 * this.squatScale;
+    }
+  }
+
+  private animateFlying(dt: number): void {
+    this.wasAirborne = true;
+    this.recoverPose(dt);
+    this.currentBob += dt * 12;
+    const bank = Math.sin(this.currentBob) * 4;
+    this.currentTilt = this.smoothTo(this.currentTilt, -6, 8, dt);
+    this.visualRoot.rotation.z = (bank * Math.PI) / 180;
+    if (this.isModelLoaded) {
+      this.modelView.boardMount.rotation.x = (this.currentTilt * Math.PI) / 180;
+    } else {
+      this.player.boardRoot.rotation.x = (this.currentTilt * Math.PI) / 180;
     }
   }
 
@@ -344,5 +393,16 @@ export class PlayerVisualController {
   private smoothTo(current: number, target: number, speed: number, dt: number): number {
     const blend = 1 - Math.exp(-speed * dt);
     return current + (target - current) * blend;
+  }
+
+  private tintMeshes(
+    meshes: readonly AbstractMesh[],
+    hex: string,
+    useOriginalTexture: boolean
+  ): void {
+    const color = Color3.FromHexString(hex);
+    for (const mesh of meshes) {
+      tintMaterial(mesh.material, color, { useOriginalTexture });
+    }
   }
 }

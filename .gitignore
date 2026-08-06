@@ -3,6 +3,8 @@ dist
 .vite
 .pnpm-store
 coverage
+_asset-staging/
+kenney_*.zip
 *.tsbuildinfo
 *.local
 *.log
