@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { OBSTACLE_RULES } from "../../config/gameplay/obstacleConfig";
 import { getPropEntry } from "../../config/visual/props.config";
 
 describe("obstacle asset calibration", () => {
@@ -24,5 +25,18 @@ describe("obstacle asset calibration", () => {
     expect(visualDepth).toBeLessThan(0.7);
     expect(fence.calibration.position.x).toBeCloseTo(-1.09, 2);
     expect(fence.calibration.position.z).toBeCloseTo(-0.227, 3);
+  });
+
+  it("keeps the dumpster collider inside the calibrated GLB silhouette", () => {
+    const dumpster = getPropEntry("dumpster");
+    const rule = OBSTACLE_RULES.obstacle_dumpster;
+    const visualWidth = 2.228 * dumpster.calibration.scale;
+    const visualHeight = 2.311 * dumpster.calibration.scale;
+    const visualDepth = 2.799 * dumpster.calibration.scale;
+
+    expect(rule.width).toBeLessThanOrEqual(visualWidth);
+    expect(rule.height).toBeLessThanOrEqual(visualHeight + 0.001);
+    expect(rule.depth).toBeLessThanOrEqual(visualDepth);
+    expect(rule.centerYOffset).toBeCloseTo(visualHeight / 2, 2);
   });
 });

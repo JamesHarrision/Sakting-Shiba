@@ -91,14 +91,22 @@ describe("TrackManager", () => {
     const pickup = scene.meshes.find(
       (m) => m.name === "pooled-pickup" && m.isEnabled()
     );
+    const obstacleWarning = scene.meshes.find(
+      (m) => m.name === "pooled-obstacle-warning" && m.isEnabled()
+    );
     expect(obstacle).toBeDefined();
     expect(pickup).toBeDefined();
+    expect(obstacleWarning).toBeDefined();
 
-    if (obstacle && pickup) {
+    if (obstacle && pickup && obstacleWarning) {
       // Lane 0 left, lane 1 center; both at world Z = startZ
       expect(obstacle.getAbsolutePosition().x).toBeCloseTo(LANE_X_POSITIONS[0]);
       expect(pickup.getAbsolutePosition().x).toBeCloseTo(LANE_X_POSITIONS[1]);
       expect(obstacle.getAbsolutePosition().z).toBeCloseTo(20, 3);
+      expect(obstacleWarning.getAbsolutePosition().x).toBeCloseTo(
+        LANE_X_POSITIONS[0]
+      );
+      expect(obstacleWarning.getAbsolutePosition().z).toBeCloseTo(20, 3);
     }
 
     // Scroll far enough for the covering chunk to recycle -> items pooled
@@ -109,6 +117,7 @@ describe("TrackManager", () => {
     stats = manager.getDebugStats();
     expect(stats.activeObstacles).toBe(0);
     expect(stats.activePickups).toBe(0);
+    expect(obstacleWarning?.isEnabled()).toBe(false);
     dispose();
   });
 

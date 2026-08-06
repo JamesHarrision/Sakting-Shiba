@@ -234,7 +234,6 @@ function processCollisions(): void {
 
   if (!collisionFrame.obstacleHit) return;
   lastObstacleHit = collisionFrame.obstacleHit.type;
-  runScene.getTrackManager().consumeItem(collisionFrame.obstacleHit.itemId);
   playerController.kill();
   playerVisualSnapshot = playerController.getVisualSnapshot();
   runStateStore.endRun();

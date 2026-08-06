@@ -74,6 +74,7 @@ export class TrackManager {
   private readonly trackRoot: TransformNode;
   private readonly chunks: TrackChunk[] = [];
   private readonly obstaclePool: SpawnItemPool;
+  private readonly obstacleWarningPool: SpawnItemPool;
   private readonly pickupPool: SpawnItemPool;
   private readonly activeItems: ActiveSpawnItem[] = [];
 
@@ -109,6 +110,13 @@ export class TrackManager {
       "spawn.pickup",
       CFG.spawnPickupColor
     );
+    const obstacleWarningMat = materials.createMaterial(
+      "spawn.obstacleWarning",
+      "#FF654D",
+      0.82
+    );
+    obstacleWarningMat.emissiveColor = obstacleWarningMat.diffuseColor.scale(0.7);
+    obstacleWarningMat.disableLighting = true;
 
     this.obstaclePool = new SpawnItemPool(scene, 16, () => {
       const mesh = MeshBuilder.CreateBox(
@@ -117,6 +125,16 @@ export class TrackManager {
         scene
       );
       mesh.material = obstacleMat;
+      return mesh;
+    });
+
+    this.obstacleWarningPool = new SpawnItemPool(scene, 16, () => {
+      const mesh = MeshBuilder.CreateBox(
+        "pooled-obstacle-warning",
+        { width: 1, height: 0.035, depth: 1 },
+        scene
+      );
+      mesh.material = obstacleWarningMat;
       return mesh;
     });
 
@@ -278,6 +296,7 @@ export class TrackManager {
   dispose(): void {
     this.releaseAllSpawnItems();
     this.obstaclePool.dispose();
+    this.obstacleWarningPool.dispose();
     this.pickupPool.dispose();
     for (const chunk of this.chunks) {
       chunk.dispose();
@@ -320,6 +339,19 @@ export class TrackManager {
     const laneX = LANE_X_POSITIONS[lane];
     const centerY = CFG.trackThickness + rule.centerYOffset;
     const id = this.nextItemId++;
+    const warning = this.obstacleWarningPool.acquire(
+      this.spawnRoot,
+      this.reusePosition.set(
+        laneX,
+        CFG.trackThickness + 0.018,
+        worldZ
+      ),
+      this.reuseScale.set(rule.width * 1.22, 1, rule.depth * 1.85)
+    );
+    if (!warning) this.warnPoolExhausted("obstacle warning");
+    const releaseWarning = (): void => {
+      if (warning) this.obstacleWarningPool.release(warning);
+    };
 
     // Prefer the real prop asset when it is loaded
     if (kind && this.props?.canRender(kind)) {
@@ -334,7 +366,10 @@ export class TrackManager {
         9000 + this.activeItems.length
       );
       this.activeItems.push({
-        release: () => instance.dispose(),
+        release: () => {
+          instance.dispose();
+          releaseWarning();
+        },
         localZ: worldZ,
         id,
         lane,
@@ -359,11 +394,15 @@ export class TrackManager {
       )
     );
     if (!mesh) {
+      releaseWarning();
       this.warnPoolExhausted("obstacle");
       return;
     }
     this.activeItems.push({
-      release: () => this.obstaclePool.release(mesh),
+      release: () => {
+        this.obstaclePool.release(mesh);
+        releaseWarning();
+      },
       localZ: worldZ,
       id,
       lane,

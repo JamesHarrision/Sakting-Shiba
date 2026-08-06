@@ -29,10 +29,10 @@ export const OBSTACLE_RULES: Readonly<Record<ObstacleItemType, ObstacleRule>> =
       requiresCrouch: true
     }),
     obstacle_dumpster: Object.freeze({
-      width: 1.45,
-      height: 1.2,
-      depth: 1.35,
-      centerYOffset: 0.6,
+      width: 1,
+      height: 1.04,
+      depth: 1.25,
+      centerYOffset: 0.52,
       visualYOffset: 0
     })
   });
