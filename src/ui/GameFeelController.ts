@@ -33,7 +33,8 @@ export class GameFeelController {
 
   update(speed: number, powers: Readonly<PowerUpSnapshot>): void {
     this.root.style.setProperty("--speed-strength", String(Math.min(1, speed / 24)));
-    this.root.classList.toggle("has-rush", powers.active.rush !== undefined);
+    this.root.classList.toggle("has-spring", powers.active.spring !== undefined);
+    this.root.classList.toggle("has-star", powers.active.star !== undefined);
     this.root.classList.toggle("has-rocket", powers.active.rocket !== undefined);
     this.root.classList.toggle("has-magnet", powers.active.magnet !== undefined);
     this.root.classList.toggle("is-speeding", speed > 0);

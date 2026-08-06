@@ -43,11 +43,23 @@ export const SPAWN_PATTERNS: readonly SpawnPattern[] = Object.freeze([
         offsetZ: 0,
         lanes: ["obstacle_box", "obstacle_dumpster", "empty"]
       },
-      { offsetZ: 8, lanes: ["empty", "powerup_rush", "empty"] },
+      { offsetZ: 8, lanes: ["empty", "powerup_spring", "empty"] },
       {
         offsetZ: 16,
         lanes: ["empty", "obstacle_fence", "obstacle_dumpster"]
       }
+    ]
+  },
+  {
+    id: "medium-score-line",
+    minimumDifficulty: 3,
+    weight: 2,
+    length: 26,
+    rows: [
+      { offsetZ: 0, lanes: ["coin", "empty", "empty"] },
+      { offsetZ: 6, lanes: ["empty", "coin", "empty"] },
+      { offsetZ: 12, lanes: ["empty", "empty", "powerup_star"] },
+      { offsetZ: 20, lanes: ["empty", "coin", "empty"] }
     ]
   },
   {

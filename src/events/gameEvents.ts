@@ -1,4 +1,5 @@
 import type { LaneIndex, PlayerState, RunState } from "../contracts/gameplay";
+import type { PowerUpType } from "../config/gameplay/powerUpConfig";
 
 export const GAME_EVENTS = {
   RUN_STARTED: "RUN_STARTED",
@@ -28,8 +29,8 @@ export interface GameEventPayloads {
   PLAYER_STATE_CHANGED: { from: PlayerState; to: PlayerState };
   LANE_CHANGED: { from: LaneIndex; to: LaneIndex };
   COIN_COLLECTED: { amount: number; totalCoins: number };
-  POWERUP_ACTIVATED: { type: "magnet" | "rush" | "rocket"; duration: number };
-  POWERUP_EXPIRED: { type: "magnet" | "rush" | "rocket" };
+  POWERUP_ACTIVATED: { type: PowerUpType; duration: number };
+  POWERUP_EXPIRED: { type: PowerUpType };
   SCORE_CHANGED: { score: number; distance: number; combo: number };
   RUN_ENDED: { state: RunState };
 }

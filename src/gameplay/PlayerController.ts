@@ -37,6 +37,7 @@ export class PlayerController {
   private laneSwitchElapsed = 0;
   private crouchTimeRemaining = 0;
   private flightHeight: number | null = null;
+  private jumpMultiplier = 1;
 
   constructor(
     private readonly eventBus: GameEventBus,
@@ -80,6 +81,7 @@ export class PlayerController {
     this.laneSwitchElapsed = 0;
     this.crouchTimeRemaining = 0;
     this.flightHeight = null;
+    this.jumpMultiplier = 1;
     this.setState("running");
   }
 
@@ -95,6 +97,10 @@ export class PlayerController {
       this.crouchTimeRemaining = 0;
       this.verticalVelocity = 0;
     }
+  }
+
+  setJumpMultiplier(multiplier: number): void {
+    this.jumpMultiplier = Math.max(1, multiplier);
   }
 
   getSnapshot(): PlayerControllerSnapshot {
@@ -175,7 +181,8 @@ export class PlayerController {
     }
 
     this.verticalVelocity = Math.sqrt(
-      2 * Math.abs(GAMEPLAY_CONFIG.gravity) * GAMEPLAY_CONFIG.jumpHeight
+      2 * Math.abs(GAMEPLAY_CONFIG.gravity) *
+        GAMEPLAY_CONFIG.jumpHeight * this.jumpMultiplier
     );
 
     this.eventBus.emit("PLAYER_JUMPED", {

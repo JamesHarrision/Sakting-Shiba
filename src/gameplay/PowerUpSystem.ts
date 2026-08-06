@@ -10,6 +10,8 @@ export interface PowerUpSnapshot {
   readonly isInvulnerable: boolean;
   readonly collectionDistance: number;
   readonly flightHeight: number;
+  readonly jumpMultiplier: number;
+  readonly scoreMultiplier: number;
 }
 
 export class PowerUpSystem {
@@ -44,20 +46,26 @@ export class PowerUpSystem {
     const active: Partial<Record<PowerUpType, number>> = {};
     let speedMultiplier = 1;
     let collectionDistance = 0;
+    let jumpMultiplier = 1;
+    let scoreMultiplier = 1;
     for (const [type, remaining] of this.remaining) {
       active[type] = remaining;
       const config = POWER_UP_CONFIG[type];
       speedMultiplier = Math.max(speedMultiplier, config.speedMultiplier);
       collectionDistance = Math.max(collectionDistance, config.collectionDistance);
+      jumpMultiplier = Math.max(jumpMultiplier, config.jumpMultiplier);
+      scoreMultiplier = Math.max(scoreMultiplier, config.scoreMultiplier);
     }
     return Object.freeze({
       active: Object.freeze(active),
       speedMultiplier,
-      isInvulnerable: this.remaining.has("rush") || this.remaining.has("rocket"),
+      isInvulnerable: this.remaining.has("rocket"),
       collectionDistance,
       flightHeight: this.remaining.has("rocket")
         ? POWER_UP_CONFIG.rocket.flightHeight
-        : 0
+        : 0,
+      jumpMultiplier,
+      scoreMultiplier
     });
   }
 

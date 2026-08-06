@@ -26,9 +26,8 @@ level layouts, UI trade dress, or other proprietary content.
 | Lucky Star | 2x Multiplier | Double score gain for a short duration. |
 | Spare Board | Hoverboard | Optional consumable shield that absorbs one crash. |
 
-The current Rush pickup is transitional and should become Spring Paws before
-release. Spare Board belongs to the pre-run/store loop rather than random world
-spawns.
+Spring Paws and Lucky Star now use separate jump and score multipliers. Spare
+Board belongs to the pre-run/store loop rather than random world spawns.
 
 ## Visual budgets
 

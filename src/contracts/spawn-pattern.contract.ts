@@ -4,8 +4,9 @@ export type SpawnItemType =
   | "obstacle_dumpster"
   | "coin"
   | "powerup_magnet"
-  | "powerup_rush"
+  | "powerup_spring"
   | "powerup_rocket"
+  | "powerup_star"
   | "empty";
 
 export type ObstacleItemType = Extract<SpawnItemType, `obstacle_${string}`>;

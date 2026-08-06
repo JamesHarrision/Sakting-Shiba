@@ -5,6 +5,13 @@ import { COSMETICS, type CosmeticItem } from "../config/visual/cosmeticsConfig";
 import type { TutorialStep } from "../gameplay/TutorialSystem";
 import type { ObstacleItemType } from "../contracts/spawn-pattern.contract";
 
+const POWER_UP_LABELS: Readonly<Record<string, string>> = Object.freeze({
+  magnet: "Coin Magnet",
+  spring: "Spring Paws",
+  rocket: "Rocket Pack",
+  star: "2x Score"
+});
+
 export interface GameUiActions {
   readonly onStart: () => void;
   readonly onTutorialStart: () => void;
@@ -153,7 +160,7 @@ export class GameUiController {
     this.setText("[data-ui='speed']", `${run.speed.toFixed(1)}x`);
     const strip = this.requireElement("[data-ui='powers']");
     strip.innerHTML = Object.entries(powers.active)
-      .map(([type, seconds]) => `<span class="power-pill power-${type}">${type} ${Math.ceil(seconds ?? 0)}s</span>`)
+      .map(([type, seconds]) => `<span class="power-pill power-${type}">${POWER_UP_LABELS[type] ?? type} ${Math.ceil(seconds ?? 0)}s</span>`)
       .join("");
   }
 

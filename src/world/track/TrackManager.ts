@@ -438,8 +438,9 @@ export class TrackManager {
     const colorByType: Readonly<Record<CollectibleItemType, string>> = {
       coin: "#FFD45A",
       powerup_magnet: "#F05A78",
-      powerup_rush: "#53E0C1",
-      powerup_rocket: "#64A8FF"
+      powerup_spring: "#53E0C1",
+      powerup_rocket: "#64A8FF",
+      powerup_star: "#FFE56B"
     };
     mesh.material = this.materials.createMaterial(
       `spawn.${type}`,

@@ -4,11 +4,15 @@ import { GameEventBus } from "../events/GameEventBus";
 
 export class RunStateStore {
   private state: RunState = RunStateStore.createInitialState();
+  private scoreMultiplier = 1;
+  private distanceScoreRemainder = 0;
 
   constructor(private readonly eventBus: GameEventBus) {}
 
   startRun(): void {
     this.state = RunStateStore.createInitialState();
+    this.scoreMultiplier = 1;
+    this.distanceScoreRemainder = 0;
     this.eventBus.emit("RUN_STARTED", { state: this.getSnapshot() });
     this.emitScoreChanged();
   }
@@ -26,10 +30,13 @@ export class RunStateStore {
       return;
     }
 
-    const previousScore = this.state.score;
     this.state.distance += deltaDistance;
-    this.state.score = Math.floor(this.state.distance) + this.state.coins * 10;
-    if (this.state.score !== previousScore) this.emitScoreChanged();
+    this.distanceScoreRemainder += deltaDistance * this.scoreMultiplier;
+    const earnedScore = Math.floor(this.distanceScoreRemainder);
+    if (earnedScore <= 0) return;
+    this.distanceScoreRemainder -= earnedScore;
+    this.state.score += earnedScore;
+    this.emitScoreChanged();
   }
 
   collectCoins(amount = 1): void {
@@ -38,7 +45,7 @@ export class RunStateStore {
     }
 
     this.state.coins += amount;
-    this.state.score += amount * 10;
+    this.state.score += amount * 10 * this.scoreMultiplier;
     this.eventBus.emit("COIN_COLLECTED", {
       amount,
       totalCoins: this.state.coins
@@ -51,6 +58,10 @@ export class RunStateStore {
       Math.max(speed, 0),
       RUN_SPEED_CONFIG.maximumSpeed * 1.5
     );
+  }
+
+  setScoreMultiplier(multiplier: number): void {
+    this.scoreMultiplier = Math.max(1, multiplier);
   }
 
   setCombo(combo: number): void {

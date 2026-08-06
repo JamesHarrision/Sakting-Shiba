@@ -6,6 +6,20 @@ import { PlayerController } from "../../gameplay/PlayerController";
 import { createEmptyInputSnapshot } from "../../input/inputSnapshot";
 
 describe("PlayerController", () => {
+  it("jumps higher while Spring Paws is active", () => {
+    const normal = new PlayerController(new GameEventBus());
+    const boosted = new PlayerController(new GameEventBus());
+    boosted.setJumpMultiplier(1.65);
+    const jumpInput = { ...createEmptyInputSnapshot(), jump: true };
+
+    const normalJump = normal.update(jumpInput, 1 / 60);
+    const boostedJump = boosted.update(jumpInput, 1 / 60);
+
+    expect(boostedJump.verticalVelocity).toBeGreaterThan(
+      normalJump.verticalVelocity
+    );
+  });
+
   it("enters rocket flight and falls after the effect ends", () => {
     const controller = new PlayerController(new GameEventBus());
     controller.setFlightHeight(4);

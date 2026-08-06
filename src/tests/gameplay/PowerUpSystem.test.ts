@@ -5,13 +5,15 @@ import { GameEventBus } from "../../events/GameEventBus";
 import { PowerUpSystem } from "../../gameplay/PowerUpSystem";
 
 describe("PowerUpSystem", () => {
-  it("activates rush and rocket gameplay effects", () => {
+  it("keeps each Subway-style power-up in a distinct gameplay role", () => {
     const system = new PowerUpSystem();
-    system.activate("rush");
-    expect(system.getSnapshot().speedMultiplier).toBe(
-      POWER_UP_CONFIG.rush.speedMultiplier
+    system.activate("spring");
+    system.activate("star");
+    expect(system.getSnapshot().jumpMultiplier).toBe(
+      POWER_UP_CONFIG.spring.jumpMultiplier
     );
-    expect(system.getSnapshot().isInvulnerable).toBe(true);
+    expect(system.getSnapshot().scoreMultiplier).toBe(2);
+    expect(system.getSnapshot().isInvulnerable).toBe(false);
 
     system.activate("rocket");
     expect(system.getSnapshot().flightHeight).toBe(
@@ -20,6 +22,7 @@ describe("PowerUpSystem", () => {
     expect(system.getSnapshot().collectionDistance).toBe(
       POWER_UP_CONFIG.rocket.collectionDistance
     );
+    expect(system.getSnapshot().isInvulnerable).toBe(true);
   });
 
   it("freezes timers while paused and expires once", () => {

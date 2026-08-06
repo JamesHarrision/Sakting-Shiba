@@ -94,11 +94,11 @@ button:focus-visible {
   animation-play-state: running;
 }
 
-.game-feel-layer.has-rush .speed-lines {
+.game-feel-layer.has-spring .speed-lines {
   opacity: 0.9;
 }
 
-.game-feel-layer.has-rush .speed-lines i {
+.game-feel-layer.has-spring .speed-lines i {
   background: var(--mint);
 }
 
@@ -318,8 +318,9 @@ button:focus-visible {
 }
 
 .power-magnet { color: #ff8098; }
-.power-rush { color: var(--mint); }
+.power-spring { color: var(--mint); }
 .power-rocket { color: var(--blue); }
+.power-star { color: var(--yellow); }
 
 .icon-button {
   width: 48px;

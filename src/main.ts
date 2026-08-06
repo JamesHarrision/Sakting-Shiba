@@ -159,6 +159,8 @@ engine.runRenderLoop(() => {
         ? currentPowerUpSnapshot.flightHeight
         : null
     );
+    playerController.setJumpMultiplier(currentPowerUpSnapshot.jumpMultiplier);
+    runStateStore.setScoreMultiplier(currentPowerUpSnapshot.scoreMultiplier);
 
     const gameplayFrame = runGameplay.update(
       deltaSeconds,
@@ -257,7 +259,7 @@ function collectWorldItem(itemId: number, type: CollectibleItemType): void {
     profileStore.addCoins(1);
     return;
   }
-  powerUps.activate(type.replace("powerup_", "") as "magnet" | "rush" | "rocket");
+  powerUps.activate(type.replace("powerup_", "") as "magnet" | "spring" | "rocket" | "star");
   currentPowerUpSnapshot = powerUps.getSnapshot();
 }
 

@@ -10,8 +10,9 @@ const VALID_ITEM_TYPES = new Set<SpawnItemType>([
   "obstacle_dumpster",
   "coin",
   "powerup_magnet",
-  "powerup_rush",
+  "powerup_spring",
   "powerup_rocket",
+  "powerup_star",
   "empty"
 ]);
 

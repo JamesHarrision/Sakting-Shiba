@@ -41,6 +41,22 @@ describe("RunStateStore", () => {
     });
   });
 
+  it("multiplies only score earned while Lucky Star is active", () => {
+    const store = new RunStateStore(new GameEventBus());
+    store.startRun();
+    store.setScoreMultiplier(2);
+    store.addDistance(5);
+    store.collectCoins(1);
+    store.setScoreMultiplier(1);
+    store.addDistance(5);
+
+    expect(store.getSnapshot()).toMatchObject({
+      distance: 10,
+      coins: 1,
+      score: 35
+    });
+  });
+
   it("does not emit run ended more than once", () => {
     const eventBus = new GameEventBus();
     const runEndedHandler = vi.fn();
