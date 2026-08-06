@@ -26,7 +26,10 @@ import type {
 import { GameEventBus } from "./events/GameEventBus";
 import { GameClock } from "./gameplay/GameClock";
 import { PlayerController } from "./gameplay/PlayerController";
-import { PlayerProfileStore } from "./gameplay/PlayerProfileStore";
+import {
+  PlayerProfileStore,
+  type RunRecordResult
+} from "./gameplay/PlayerProfileStore";
 import { PowerUpSystem } from "./gameplay/PowerUpSystem";
 import { RunGameplaySystem } from "./gameplay/RunGameplaySystem";
 import { RunnerCollisionSystem } from "./gameplay/RunnerCollisionSystem";
@@ -40,7 +43,7 @@ import { GameUiController } from "./ui/GameUiController";
 import { GameFeelController } from "./ui/GameFeelController";
 import "./style.css";
 
-type AppMode = "menu" | "countdown" | "running" | "paused" | "gameover" | "store";
+type AppMode = "loading" | "menu" | "countdown" | "running" | "paused" | "gameover" | "store";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
 if (!canvas) throw new Error("Game canvas was not found.");
@@ -74,7 +77,7 @@ const gameFeel = new GameFeelController(eventBus, (amount) =>
   runScene.addCameraImpact(amount)
 );
 
-let appMode: AppMode = "menu";
+let appMode: AppMode = "loading";
 let storeReturnMode: AppMode = "menu";
 let countdownRemaining = 0;
 let displayedCountdown = -1;
@@ -87,6 +90,8 @@ let playerColliderSnapshot: Readonly<PlayerColliderSnapshot> =
   playerColliderController.update(playerController.getSnapshot());
 let currentSpeed = 0;
 let lastObstacleHit: ObstacleItemType | null = null;
+let lastRunRecord: RunRecordResult | null = null;
+let assetsReady = false;
 let ui!: GameUiController;
 
 const tutorial = new TutorialSystem(
@@ -131,8 +136,18 @@ keyboardInput.attach();
 clock.pause();
 runStateStore.startRun();
 applyEquippedCosmetics();
-ui.showMenu(profileStore.getSnapshot());
-void runScene.startAssetLoad().then(applyEquippedCosmetics);
+ui.showLoading();
+void runScene.startAssetLoad()
+  .catch((error) => {
+    console.warn("[ShibaSkating] Optional asset load failed; using fallbacks.", error);
+  })
+  .finally(() => {
+    if (isDisposed) return;
+    assetsReady = true;
+    applyEquippedCosmetics();
+    appMode = "menu";
+    ui.showMenu(profileStore.getSnapshot());
+  });
 
 engine.runRenderLoop(() => {
   const rawDeltaSeconds = Math.min(Math.max(engine.getDeltaTime() / 1000, 0), 0.1);
@@ -239,6 +254,8 @@ function processCollisions(): void {
   playerController.kill();
   playerVisualSnapshot = playerController.getVisualSnapshot();
   runStateStore.endRun();
+  const completedRun = runStateStore.getSnapshot();
+  lastRunRecord = profileStore.recordRun(completedRun.score, completedRun.distance);
   runGameplay.pause();
   powerUps.pause();
   currentSpeed = 0;
@@ -246,9 +263,10 @@ function processCollisions(): void {
   gameFeel.update(0, currentPowerUpSnapshot);
   audio.setPaused(true);
   ui.showGameOver(
-    runStateStore.getSnapshot(),
+    completedRun,
     profileStore.getSnapshot(),
-    lastObstacleHit
+    lastObstacleHit,
+    lastRunRecord
   );
 }
 
@@ -264,6 +282,7 @@ function collectWorldItem(itemId: number, type: CollectibleItemType): void {
 }
 
 function beginCountdown(withTutorial: boolean): void {
+  if (!assetsReady) return;
   prepareRun();
   runGameplay.setTutorialMode(withTutorial);
   startWithTutorial = withTutorial;
@@ -307,6 +326,7 @@ function prepareRun(): void {
   runStateStore.startRun();
   currentSpeed = runGameplay.getCurrentSpeed();
   lastObstacleHit = null;
+  lastRunRecord = null;
   hudElapsed = 0;
   runScene.reset();
   clock.pause();
@@ -366,7 +386,8 @@ function closeStore(): void {
     ui.showGameOver(
       runStateStore.getSnapshot(),
       profileStore.getSnapshot(),
-      lastObstacleHit
+      lastObstacleHit,
+      lastRunRecord
     );
   } else {
     showMainMenu();
@@ -376,11 +397,14 @@ function closeStore(): void {
 function handleCosmeticAction(item: CosmeticItem): void {
   const profile = profileStore.getSnapshot();
   if (!profile.ownedCosmetics.includes(item.id)) {
-    if (!profileStore.purchase(item.id, item.price)) return;
+    if (!profileStore.purchase(item.id, item.price)) {
+      ui.showStore(profile, `Need ${item.price - profile.coins} more coins for ${item.name}.`);
+      return;
+    }
   }
   profileStore.equip(item.category, item.id);
   applyEquippedCosmetics();
-  ui.showStore(profileStore.getSnapshot());
+  ui.showStore(profileStore.getSnapshot(), `${item.name} equipped.`);
 }
 
 function applyEquippedCosmetics(): void {

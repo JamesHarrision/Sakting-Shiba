@@ -134,9 +134,42 @@ button:focus-visible {
 
 .menu-screen,
 .pause-screen,
-.result-screen {
+.result-screen,
+.loading-screen {
   width: min(680px, 100%);
   animation: panel-in 700ms var(--motion) both;
+}
+
+.loading-screen {
+  text-align: center;
+}
+
+.loading-screen h1 {
+  margin: 0;
+  font-size: clamp(34px, 6vw, 72px);
+  line-height: 1;
+}
+
+.loading-screen > p:last-child {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 13px;
+}
+
+.loading-track {
+  width: min(360px, 72vw);
+  height: 6px;
+  margin: 28px auto 14px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.loading-track span {
+  display: block;
+  width: 42%;
+  height: 100%;
+  background: var(--mint);
+  animation: loading-slide 900ms var(--motion) infinite alternate;
 }
 
 .menu-screen {
@@ -184,6 +217,39 @@ button:focus-visible {
   color: var(--paper);
   font-size: 20px;
   font-weight: 800;
+}
+
+.menu-profile {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px 28px;
+  margin: 28px 0;
+}
+
+.menu-profile .wallet-line {
+  margin: 0;
+}
+
+.menu-profile > p:not(.wallet-line) {
+  margin: 0;
+}
+
+.menu-profile > p:not(.wallet-line) span,
+.menu-profile > p:not(.wallet-line) strong {
+  display: block;
+}
+
+.menu-profile > p:not(.wallet-line) span {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.menu-profile > p:not(.wallet-line) strong {
+  margin-top: 2px;
+  font-size: 18px;
 }
 
 .coin-mark {
@@ -458,6 +524,14 @@ button:focus-visible {
   gap: 12px;
 }
 
+.store-feedback {
+  min-height: 20px;
+  margin: -14px 0 14px;
+  color: var(--yellow);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .store-item {
   min-width: 0;
   padding: 14px;
@@ -550,6 +624,11 @@ button:focus-visible {
 
 @keyframes overlay-in {
   from { opacity: 0; }
+}
+
+@keyframes loading-slide {
+  from { transform: translateX(-105%); }
+  to { transform: translateX(245%); }
 }
 
 @keyframes panel-in {

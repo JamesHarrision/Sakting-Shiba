@@ -1,6 +1,6 @@
-# Catboard Rush
+# Shiba Skating
 
-Catboard Rush is a low-poly 3D endless runner about a cat riding a skateboard
+Shiba Skating is a low-poly 3D endless runner about a cat riding a skateboard
 through a rooftop city. It is built with Babylon.js, TypeScript, Vite, and pnpm.
 
 ## Play loop

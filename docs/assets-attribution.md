@@ -1,6 +1,6 @@
 # Asset Attribution
 
-This file records the source and license of every runtime asset used by Catboard Rush.
+This file records the source and license of every runtime asset used by Shiba Skating.
 
 ## Kenney City Kit (Commercial)
 

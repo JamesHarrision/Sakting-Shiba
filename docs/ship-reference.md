@@ -1,8 +1,8 @@
-# Catboard Rush ship reference
+# Shiba Skating ship reference
 
 ## Reference boundary
 
-Catboard Rush uses Subway Surfers as a benchmark for lane readability,
+Shiba Skating uses Subway Surfers as a benchmark for lane readability,
 responsive controls, collectible guidance, short-session pacing, and power-up
 roles. It does not copy Subway Surfers branding, characters, artwork, audio,
 level layouts, UI trade dress, or other proprietary content.
@@ -18,7 +18,7 @@ level layouts, UI trade dress, or other proprietary content.
 
 ## Power-up roles
 
-| Catboard Rush | Reference role | Ship behavior |
+| Shiba Skating | Reference role | Ship behavior |
 | --- | --- | --- |
 | Coin Magnet | Coin Magnet | Pull nearby coins for a short duration. |
 | Rocket Pack | Jetpack | Lift above ground hazards and create an aerial coin path. |

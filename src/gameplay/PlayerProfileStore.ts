@@ -6,6 +6,14 @@ export interface PlayerProfile {
   readonly equippedCat: string;
   readonly equippedBoard: string;
   readonly tutorialCompleted: boolean;
+  readonly bestScore: number;
+  readonly bestDistance: number;
+  readonly totalRuns: number;
+}
+
+export interface RunRecordResult {
+  readonly isNewBestScore: boolean;
+  readonly isNewBestDistance: boolean;
 }
 
 interface StoragePort {
@@ -19,7 +27,10 @@ const DEFAULT_PROFILE: PlayerProfile = Object.freeze({
   ownedCosmetics: Object.freeze(["cat.default", "board.default"]),
   equippedCat: "cat.default",
   equippedBoard: "board.default",
-  tutorialCompleted: false
+  tutorialCompleted: false,
+  bestScore: 0,
+  bestDistance: 0,
+  totalRuns: 0
 });
 
 export class PlayerProfileStore {
@@ -69,6 +80,19 @@ export class PlayerProfileStore {
     this.update({ tutorialCompleted: true });
   }
 
+  recordRun(score: number, distance: number): RunRecordResult {
+    const normalizedScore = Math.max(0, Math.floor(Number.isFinite(score) ? score : 0));
+    const normalizedDistance = Math.max(0, Number.isFinite(distance) ? distance : 0);
+    const isNewBestScore = normalizedScore > this.profile.bestScore;
+    const isNewBestDistance = normalizedDistance > this.profile.bestDistance;
+    this.update({
+      bestScore: Math.max(this.profile.bestScore, normalizedScore),
+      bestDistance: Math.max(this.profile.bestDistance, normalizedDistance),
+      totalRuns: this.profile.totalRuns + 1
+    });
+    return { isNewBestScore, isNewBestDistance };
+  }
+
   private update(changes: Partial<PlayerProfile>): void {
     this.profile = Object.freeze({ ...this.profile, ...changes });
     this.persist();
@@ -91,7 +115,10 @@ export class PlayerProfileStore {
         ]),
         equippedCat: value.equippedCat ?? "cat.default",
         equippedBoard: value.equippedBoard ?? "board.default",
-        tutorialCompleted: value.tutorialCompleted ?? false
+        tutorialCompleted: value.tutorialCompleted ?? false,
+        bestScore: Math.max(0, Math.floor(value.bestScore ?? 0)),
+        bestDistance: Math.max(0, value.bestDistance ?? 0),
+        totalRuns: Math.max(0, Math.floor(value.totalRuns ?? 0))
       });
     } catch {
       return DEFAULT_PROFILE;

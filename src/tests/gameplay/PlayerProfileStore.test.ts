@@ -22,12 +22,16 @@ describe("PlayerProfileStore", () => {
     expect(first.purchase("cat.calico", 120)).toBe(true);
     expect(first.equip("cat", "cat.calico")).toBe(true);
     first.completeTutorial();
+    expect(first.recordRun(425, 182.7).isNewBestScore).toBe(true);
 
     const restored = new PlayerProfileStore(storage).getSnapshot();
     expect(restored.coins).toBe(80);
     expect(restored.ownedCosmetics).toContain("cat.calico");
     expect(restored.equippedCat).toBe("cat.calico");
     expect(restored.tutorialCompleted).toBe(true);
+    expect(restored.bestScore).toBe(425);
+    expect(restored.bestDistance).toBe(182.7);
+    expect(restored.totalRuns).toBe(1);
   });
 
   it("rejects unaffordable, duplicate and unowned actions", () => {
@@ -38,5 +42,19 @@ describe("PlayerProfileStore", () => {
     expect(store.purchase("board.neon", 10)).toBe(false);
     expect(store.equip("board", "board.unknown")).toBe(false);
     expect(store.equip("board", "board.neon")).toBe(true);
+  });
+
+  it("keeps personal records while counting every completed run", () => {
+    const store = new PlayerProfileStore(new MemoryStorage());
+    store.recordRun(500, 200);
+    expect(store.recordRun(450, 240)).toEqual({
+      isNewBestScore: false,
+      isNewBestDistance: true
+    });
+    expect(store.getSnapshot()).toMatchObject({
+      bestScore: 500,
+      bestDistance: 240,
+      totalRuns: 2
+    });
   });
 });

@@ -1,5 +1,6 @@
 import type { PowerUpSnapshot } from "../gameplay/PowerUpSystem";
 import type { PlayerProfile } from "../gameplay/PlayerProfileStore";
+import type { RunRecordResult } from "../gameplay/PlayerProfileStore";
 import type { RunState } from "../contracts/gameplay";
 import { COSMETICS, type CosmeticItem } from "../config/visual/cosmeticsConfig";
 import type { TutorialStep } from "../gameplay/TutorialSystem";
@@ -63,7 +64,21 @@ export class GameUiController {
     this.tutorial = this.requireElement("[data-ui='tutorial']");
     this.touchControls = this.requireElement(".touch-controls");
     this.root.addEventListener("click", this.handleClick);
-    this.showMenu({ coins: 0, ownedCosmetics: [], equippedCat: "cat.default", equippedBoard: "board.default", tutorialCompleted: false });
+    this.showLoading();
+  }
+
+  showLoading(): void {
+    this.hud.hidden = true;
+    this.tutorial.hidden = true;
+    this.touchControls.hidden = true;
+    this.overlay.hidden = false;
+    this.overlay.innerHTML = `
+      <section class="loading-screen" aria-live="polite">
+        <p class="game-kicker">Shiba Skating</p>
+        <h1>Waxing the board...</h1>
+        <div class="loading-track"><span></span></div>
+        <p>Loading the city and your ride</p>
+      </section>`;
   }
 
   showMenu(profile: Readonly<PlayerProfile>): void {
@@ -74,8 +89,12 @@ export class GameUiController {
     this.overlay.innerHTML = `
       <section class="menu-screen">
         <p class="game-kicker">Rooftop runner</p>
-        <h1>Catboard<br>Rush</h1>
-        <p class="wallet-line"><span class="coin-mark"></span>${profile.coins}</p>
+        <h1>Shiba<br>Skating</h1>
+        <div class="menu-profile">
+          <p class="wallet-line"><span class="coin-mark"></span>${profile.coins}</p>
+          <p><span>Best</span><strong>${profile.bestScore.toLocaleString()}</strong></p>
+          <p><span>Distance</span><strong>${Math.floor(profile.bestDistance)}m</strong></p>
+        </div>
         <div class="menu-actions">
           <button class="primary-command" data-action="start">Start run <span>→</span></button>
           <button class="secondary-command" data-action="tutorial">Tutorial</button>
@@ -116,19 +135,21 @@ export class GameUiController {
   showGameOver(
     run: Readonly<RunState>,
     profile: Readonly<PlayerProfile>,
-    hitType: ObstacleItemType | null = null
+    hitType: ObstacleItemType | null = null,
+    record: Readonly<RunRecordResult> | null = null
   ): void {
     this.tutorial.hidden = true;
     this.touchControls.hidden = true;
     this.overlay.hidden = false;
     this.overlay.innerHTML = `
       <section class="result-screen">
-        <p class="game-kicker">Run complete</p><h2>${run.score.toLocaleString()}</h2>
+        <p class="game-kicker">${record?.isNewBestScore ? "New best" : "Run complete"}</p><h2>${run.score.toLocaleString()}</h2>
         ${this.renderCrashReason(hitType)}
         <div class="result-stats">
           <span>Distance <strong>${Math.floor(run.distance)}m</strong></span>
           <span>Run coins <strong>${run.coins}</strong></span>
           <span>Wallet <strong>${profile.coins}</strong></span>
+          <span>Best <strong>${profile.bestScore.toLocaleString()}</strong></span>
         </div>
         <div class="menu-actions">
           <button class="primary-command" data-action="restart">Run again <span>↻</span></button>
@@ -138,7 +159,7 @@ export class GameUiController {
       </section>`;
   }
 
-  showStore(profile: Readonly<PlayerProfile>): void {
+  showStore(profile: Readonly<PlayerProfile>, feedback = ""): void {
     this.hud.hidden = true;
     this.tutorial.hidden = true;
     this.touchControls.hidden = true;
@@ -146,6 +167,7 @@ export class GameUiController {
     this.overlay.innerHTML = `
       <section class="store-screen">
         <header><div><p class="game-kicker">Locker</p><h2>Choose your ride.</h2></div><p class="wallet-line"><span class="coin-mark"></span>${profile.coins}</p></header>
+        <p class="store-feedback" aria-live="polite">${feedback}</p>
         <div class="store-grid">${COSMETICS.map((item) => this.renderStoreItem(item, profile)).join("")}</div>
         <button class="secondary-command store-close" data-action="close-store">Back</button>
       </section>`;
@@ -196,7 +218,7 @@ export class GameUiController {
   private renderStoreItem(item: CosmeticItem, profile: Readonly<PlayerProfile>): string {
     const owned = profile.ownedCosmetics.includes(item.id);
     const equipped = item.category === "cat" ? profile.equippedCat === item.id : profile.equippedBoard === item.id;
-    const label = equipped ? "Equipped" : owned ? "Equip" : `${item.price}`;
+    const label = equipped ? "Equipped" : owned ? "Equip" : `Unlock · ${item.price}`;
     return `<article class="store-item ${equipped ? "is-equipped" : ""}">
       <div class="cosmetic-swatch" style="--swatch:${item.color};--accent:${item.accent}"></div>
       <p>${item.category === "cat" ? "Cat skin" : "Skateboard"}</p><h3>${item.name}</h3>
