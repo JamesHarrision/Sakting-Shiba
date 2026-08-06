@@ -4,6 +4,7 @@ import { RunSpeedSystem } from "./RunSpeedSystem";
 import { SpawnDirector } from "./spawning/SpawnDirector";
 
 const MAX_REQUESTS_PER_FRAME = 8;
+const EMPTY_REQUESTS: readonly Readonly<SpawnRequest>[] = Object.freeze([]);
 
 export interface RunGameplayFrame {
   readonly speed: number;
@@ -24,7 +25,7 @@ export class RunGameplaySystem {
     if (this.paused) return this.getFrame([]);
 
     this.speedSystem.update(deltaSeconds);
-    const requests: Readonly<SpawnRequest>[] = [];
+    let requests: Readonly<SpawnRequest>[] | undefined;
     const spawnThroughZ = playerTravelZ + this.spawnAheadDistance;
 
     for (let index = 0; index < MAX_REQUESTS_PER_FRAME; index += 1) {
@@ -36,10 +37,10 @@ export class RunGameplaySystem {
         this.speedSystem.getDifficulty()
       );
       if (!request) break;
-      requests.push(request);
+      (requests ??= []).push(request);
     }
 
-    return this.getFrame(requests);
+    return this.getFrame(requests ?? EMPTY_REQUESTS);
   }
 
   getCurrentSpeed(): number {

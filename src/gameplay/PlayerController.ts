@@ -114,8 +114,9 @@ export class PlayerController {
     };
   }
 
-  getVisualSnapshot(): PlayerVisualSnapshot {
-    const snapshot = this.getSnapshot();
+  getVisualSnapshot(
+    snapshot: Readonly<PlayerControllerSnapshot> = this.getSnapshot()
+  ): PlayerVisualSnapshot {
     const targetX = LANE_X_POSITIONS[snapshot.lane];
 
     return Object.freeze({
@@ -134,10 +135,9 @@ export class PlayerController {
   }
 
   getCameraTargetSnapshot(
-    isPaused = false
+    isPaused = false,
+    snapshot: Readonly<PlayerControllerSnapshot> = this.getSnapshot()
   ): Readonly<PlayerCameraTargetSnapshot> {
-    const snapshot = this.getSnapshot();
-
     return Object.freeze({
       targetX: snapshot.x,
       targetY: snapshot.y,

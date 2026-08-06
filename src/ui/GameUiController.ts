@@ -23,7 +23,9 @@ export class GameUiController {
   private readonly hud: HTMLElement;
   private readonly overlay: HTMLElement;
   private readonly tutorial: HTMLElement;
+  private readonly touchControls: HTMLElement;
   private readonly actions: GameUiActions;
+  private tutorialActive = false;
 
   constructor(actions: GameUiActions) {
     this.actions = actions;
@@ -50,6 +52,7 @@ export class GameUiController {
     this.hud = this.requireElement("[data-ui='hud']");
     this.overlay = this.requireElement("[data-ui='overlay']");
     this.tutorial = this.requireElement("[data-ui='tutorial']");
+    this.touchControls = this.requireElement(".touch-controls");
     this.root.addEventListener("click", this.handleClick);
     this.showMenu({ coins: 0, ownedCosmetics: [], equippedCat: "cat.default", equippedBoard: "board.default", tutorialCompleted: false });
   }
@@ -57,6 +60,7 @@ export class GameUiController {
   showMenu(profile: Readonly<PlayerProfile>): void {
     this.hud.hidden = true;
     this.tutorial.hidden = true;
+    this.touchControls.hidden = true;
     this.overlay.hidden = false;
     this.overlay.innerHTML = `
       <section class="menu-screen">
@@ -72,6 +76,8 @@ export class GameUiController {
 
   showCountdown(value: number): void {
     this.hud.hidden = false;
+    this.tutorial.hidden = true;
+    this.touchControls.hidden = true;
     this.overlay.hidden = false;
     this.overlay.innerHTML = `<div class="countdown" aria-live="assertive">${value > 0 ? value : "GO"}</div>`;
   }
@@ -79,9 +85,13 @@ export class GameUiController {
   showRunning(): void {
     this.hud.hidden = false;
     this.overlay.hidden = true;
+    this.tutorial.hidden = !this.tutorialActive;
+    this.touchControls.hidden = false;
   }
 
   showPaused(): void {
+    this.tutorial.hidden = true;
+    this.touchControls.hidden = true;
     this.overlay.hidden = false;
     this.overlay.innerHTML = `
       <section class="pause-screen">
@@ -94,6 +104,8 @@ export class GameUiController {
   }
 
   showGameOver(run: Readonly<RunState>, profile: Readonly<PlayerProfile>): void {
+    this.tutorial.hidden = true;
+    this.touchControls.hidden = true;
     this.overlay.hidden = false;
     this.overlay.innerHTML = `
       <section class="result-screen">
@@ -114,6 +126,7 @@ export class GameUiController {
   showStore(profile: Readonly<PlayerProfile>): void {
     this.hud.hidden = true;
     this.tutorial.hidden = true;
+    this.touchControls.hidden = true;
     this.overlay.hidden = false;
     this.overlay.innerHTML = `
       <section class="store-screen">
@@ -138,9 +151,11 @@ export class GameUiController {
 
   showTutorial(step: TutorialStep): void {
     if (step === "complete") {
+      this.tutorialActive = false;
       this.tutorial.hidden = true;
       return;
     }
+    this.tutorialActive = true;
     const copy: Record<Exclude<TutorialStep, "complete">, string> = {
       lane: "Move left or right",
       jump: "Jump over boxes",

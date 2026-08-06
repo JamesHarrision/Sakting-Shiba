@@ -56,6 +56,7 @@ const playerController = new PlayerController(eventBus);
 const runGameplay = new RunGameplaySystem();
 const collisionSystem = new RunnerCollisionSystem();
 const powerUps = new PowerUpSystem(eventBus);
+let currentPowerUpSnapshot = powerUps.getSnapshot();
 const profileStore = new PlayerProfileStore(getLocalStorage());
 const audio = new GameAudioManager(eventBus);
 const playerColliderController = new PlayerColliderController({
@@ -77,7 +78,8 @@ let displayedCountdown = -1;
 let startWithTutorial = false;
 let isDisposed = false;
 let hudElapsed = 0;
-let playerVisualSnapshot = playerController.getVisualSnapshot();
+let playerSnapshot = playerController.getSnapshot();
+let playerVisualSnapshot = playerController.getVisualSnapshot(playerSnapshot);
 let playerColliderSnapshot: Readonly<PlayerColliderSnapshot> =
   playerColliderController.update(playerController.getSnapshot());
 let currentSpeed = 0;
@@ -138,9 +140,11 @@ engine.runRenderLoop(() => {
 
   if (deltaSeconds > 0) {
     powerUps.update(deltaSeconds);
-    const powerUpSnapshot = powerUps.getSnapshot();
+    currentPowerUpSnapshot = powerUps.getSnapshot();
     playerController.setFlightHeight(
-      powerUpSnapshot.flightHeight > 0 ? powerUpSnapshot.flightHeight : null
+      currentPowerUpSnapshot.flightHeight > 0
+        ? currentPowerUpSnapshot.flightHeight
+        : null
     );
 
     const gameplayFrame = runGameplay.update(
@@ -149,12 +153,14 @@ engine.runRenderLoop(() => {
     );
     const tutorialMultiplier = tutorial.isActive ? 0.72 : 1;
     currentSpeed =
-      gameplayFrame.speed * powerUpSnapshot.speedMultiplier * tutorialMultiplier;
+      gameplayFrame.speed *
+      currentPowerUpSnapshot.speedMultiplier *
+      tutorialMultiplier;
     runStateStore.setSpeed(currentSpeed);
     runScene.getTrackManager().submitSpawnRequests(gameplayFrame.spawnRequests);
 
-    const playerSnapshot = playerController.update(inputSnapshot, deltaSeconds);
-    playerVisualSnapshot = playerController.getVisualSnapshot();
+    playerSnapshot = playerController.update(inputSnapshot, deltaSeconds);
+    playerVisualSnapshot = playerController.getVisualSnapshot(playerSnapshot);
     playerColliderSnapshot = playerColliderController.update(playerSnapshot);
     runStateStore.addDistance(currentSpeed * deltaSeconds);
   }
@@ -163,7 +169,10 @@ engine.runRenderLoop(() => {
   const frameSnapshot: PlayerVisualSnapshot = isPaused
     ? { ...playerVisualSnapshot, state: "paused" }
     : playerVisualSnapshot;
-  const cameraSnapshot = playerController.getCameraTargetSnapshot(isPaused);
+  const cameraSnapshot = playerController.getCameraTargetSnapshot(
+    isPaused,
+    playerSnapshot
+  );
   const presentationDelta = isPaused ? 0 : rawDeltaSeconds;
 
   runScene.update(
@@ -179,8 +188,8 @@ engine.runRenderLoop(() => {
     hudElapsed += deltaSeconds;
     if (hudElapsed >= 0.1) {
       hudElapsed = 0;
-      ui.updateHud(runStateStore.getSnapshot(), powerUps.getSnapshot());
-      gameFeel.update(currentSpeed, powerUps.getSnapshot());
+      ui.updateHud(runStateStore.getSnapshot(), currentPowerUpSnapshot);
+      gameFeel.update(currentSpeed, currentPowerUpSnapshot);
     }
   }
 
@@ -188,24 +197,23 @@ engine.runRenderLoop(() => {
 });
 
 function processCollisions(): void {
-  const powerUpSnapshot = powerUps.getSnapshot();
-  if (powerUpSnapshot.collectionDistance > 0) {
-    const nearbyCoinIds = runScene
-      .getTrackManager()
-      .getActiveItems()
-      .filter(
-        (item) =>
-          item.type === "coin" &&
-          Math.abs(item.worldZ) <= powerUpSnapshot.collectionDistance
-      )
-      .map((item) => item.id);
-    for (const itemId of nearbyCoinIds) collectWorldItem(itemId, "coin");
+  if (currentPowerUpSnapshot.collectionDistance > 0) {
+    const activeItems = runScene.getTrackManager().getActiveItems();
+    for (let index = activeItems.length - 1; index >= 0; index -= 1) {
+      const item = activeItems[index];
+      if (
+        item.type === "coin" &&
+        Math.abs(item.worldZ) <= currentPowerUpSnapshot.collectionDistance
+      ) {
+        collectWorldItem(item.id, "coin");
+      }
+    }
   }
 
   const collisionFrame = collisionSystem.update(
     playerColliderSnapshot,
     runScene.getTrackManager().getActiveItems(),
-    powerUpSnapshot.isInvulnerable || tutorial.isActive
+    currentPowerUpSnapshot.isInvulnerable || tutorial.isActive
   );
   for (const collectible of collisionFrame.collectibles) {
     collectWorldItem(collectible.itemId, collectible.type);
@@ -220,7 +228,7 @@ function processCollisions(): void {
   powerUps.pause();
   currentSpeed = 0;
   appMode = "gameover";
-  gameFeel.update(0, powerUps.getSnapshot());
+  gameFeel.update(0, currentPowerUpSnapshot);
   audio.setPaused(true);
   ui.showGameOver(runStateStore.getSnapshot(), profileStore.getSnapshot());
 }
@@ -233,6 +241,7 @@ function collectWorldItem(itemId: number, type: CollectibleItemType): void {
     return;
   }
   powerUps.activate(type.replace("powerup_", "") as "magnet" | "rush" | "rocket");
+  currentPowerUpSnapshot = powerUps.getSnapshot();
 }
 
 function beginCountdown(withTutorial: boolean): void {
@@ -259,7 +268,7 @@ function updateCountdown(deltaSeconds: number): void {
   powerUps.resume();
   audio.setPaused(false);
   ui.showRunning();
-  ui.updateHud(runStateStore.getSnapshot(), powerUps.getSnapshot());
+  ui.updateHud(runStateStore.getSnapshot(), currentPowerUpSnapshot);
   if (startWithTutorial) tutorial.start();
 }
 
@@ -270,8 +279,10 @@ function prepareRun(): void {
   runGameplay.reset();
   collisionSystem.reset();
   powerUps.reset();
+  currentPowerUpSnapshot = powerUps.getSnapshot();
   playerColliderController.reset();
-  playerVisualSnapshot = playerController.getVisualSnapshot();
+  playerSnapshot = playerController.getSnapshot();
+  playerVisualSnapshot = playerController.getVisualSnapshot(playerSnapshot);
   playerColliderSnapshot = playerColliderController.getSnapshot();
   runStateStore.startRun();
   currentSpeed = runGameplay.getCurrentSpeed();
@@ -288,7 +299,7 @@ function pauseRun(): void {
   runGameplay.pause();
   powerUps.pause();
   audio.setPaused(true);
-  gameFeel.update(0, powerUps.getSnapshot());
+  gameFeel.update(0, currentPowerUpSnapshot);
   keyboardInput.reset();
   ui.showPaused();
 }
@@ -312,7 +323,7 @@ function showMainMenu(): void {
   runGameplay.pause();
   powerUps.pause();
   audio.setPaused(true);
-  gameFeel.update(0, powerUps.getSnapshot());
+  gameFeel.update(0, currentPowerUpSnapshot);
   keyboardInput.reset();
   ui.showMenu(profileStore.getSnapshot());
 }

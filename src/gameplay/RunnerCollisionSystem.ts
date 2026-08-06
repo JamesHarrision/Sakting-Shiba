@@ -20,7 +20,7 @@ export class RunnerCollisionSystem {
   ): Readonly<CollisionFrameResult> {
     if (!player.isEnabled) return EMPTY_RESULT;
 
-    const collectibles: CollectibleHit[] = [];
+    let collectibles: CollectibleHit[] | undefined;
 
     for (const item of items) {
       if (!overlapsDepth(player, item)) continue;
@@ -33,7 +33,9 @@ export class RunnerCollisionSystem {
               itemId: item.id,
               type: item.type
             }),
-            collectibles: Object.freeze(collectibles)
+            collectibles: collectibles
+              ? Object.freeze(collectibles)
+              : EMPTY_RESULT.collectibles
           });
         }
         continue;
@@ -43,11 +45,11 @@ export class RunnerCollisionSystem {
       const dy = player.centerY - item.centerY;
       const radius = player.pickupRadius + item.width / 2;
       if (dx * dx + dy * dy <= radius * radius) {
-        collectibles.push({ itemId: item.id, type: item.type });
+        (collectibles ??= []).push({ itemId: item.id, type: item.type });
       }
     }
 
-    if (collectibles.length === 0) return EMPTY_RESULT;
+    if (!collectibles) return EMPTY_RESULT;
     return Object.freeze({
       obstacleHit: null,
       collectibles: Object.freeze(collectibles)

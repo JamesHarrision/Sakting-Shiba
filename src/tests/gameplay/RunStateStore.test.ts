@@ -53,4 +53,26 @@ describe("RunStateStore", () => {
     expect(runEndedHandler).toHaveBeenCalledTimes(1);
     expect(store.getSnapshot().isGameOver).toBe(true);
   });
+
+  it("emits score changes only when the visible score changes", () => {
+    const eventBus = new GameEventBus();
+    const scoreHandler = vi.fn();
+    const store = new RunStateStore(eventBus);
+
+    eventBus.on("SCORE_CHANGED", scoreHandler);
+    store.startRun();
+    scoreHandler.mockClear();
+
+    for (let frame = 0; frame < 60; frame += 1) {
+      store.addDistance(0.01);
+    }
+
+    expect(store.getSnapshot().distance).toBeCloseTo(0.6);
+    expect(store.getSnapshot().score).toBe(0);
+    expect(scoreHandler).not.toHaveBeenCalled();
+
+    store.addDistance(0.41);
+    expect(store.getSnapshot().score).toBe(1);
+    expect(scoreHandler).toHaveBeenCalledTimes(1);
+  });
 });

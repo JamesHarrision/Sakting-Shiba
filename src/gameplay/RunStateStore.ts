@@ -26,9 +26,10 @@ export class RunStateStore {
       return;
     }
 
+    const previousScore = this.state.score;
     this.state.distance += deltaDistance;
     this.state.score = Math.floor(this.state.distance) + this.state.coins * 10;
-    this.emitScoreChanged();
+    if (this.state.score !== previousScore) this.emitScoreChanged();
   }
 
   collectCoins(amount = 1): void {
