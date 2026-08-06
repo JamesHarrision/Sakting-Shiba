@@ -3,8 +3,6 @@ import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import type { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { Scene } from "@babylonjs/core/scene";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
-import { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial";
-import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 
 import type { MaterialsRegistry } from "../../assets/MaterialsRegistry";
 import type { PlayerAssetLoader } from "../../assets/PlayerAssetLoader";
@@ -15,6 +13,7 @@ import { PlayerModelView } from "../../player/visual/PlayerModelView";
 import { LandingDustEffect } from "../../vfx/LandingDustEffect";
 import { PlayerBlobShadow } from "../../vfx/PlayerBlobShadow";
 import { ProceduralPlayer } from "./ProceduralPlayer";
+import { tintMaterial } from "./materialTint";
 
 const CFG = PLAYER_MODEL_CONFIG;
 const RUN_BOB_SPEED = 8;
@@ -22,6 +21,8 @@ const RUN_BOB_AMOUNT = 0.035;
 const LEAN_SPEED = 10;
 const BOARD_TILT_SPEED = 12;
 const SQUASH_RECOVER_SPEED = 14;
+const DEFAULT_CAT_COLOR = "#E87848";
+const DEFAULT_BOARD_COLOR = "#68503E";
 
 export class PlayerVisualController {
   readonly player: ProceduralPlayer;
@@ -49,8 +50,8 @@ export class PlayerVisualController {
   private catLoaded = false;
   private boardLoaded = false;
   private disposed = false;
-  private catColor = "#E87848";
-  private boardColor = "#68503E";
+  private catColor = DEFAULT_CAT_COLOR;
+  private boardColor = DEFAULT_BOARD_COLOR;
 
   constructor(
     scene: Scene,
@@ -136,14 +137,16 @@ export class PlayerVisualController {
         this.player.tail,
         ...this.modelView.catMeshes
       ],
-      catColor
+      catColor,
+      catColor === DEFAULT_CAT_COLOR
     );
     this.tintMeshes(
       [
         ...this.player.meshes.filter((mesh) => mesh.name.startsWith("board-")),
         ...this.modelView.boardMeshes
       ],
-      boardColor
+      boardColor,
+      boardColor === DEFAULT_BOARD_COLOR
     );
   }
 
@@ -392,14 +395,14 @@ export class PlayerVisualController {
     return current + (target - current) * blend;
   }
 
-  private tintMeshes(meshes: readonly AbstractMesh[], hex: string): void {
+  private tintMeshes(
+    meshes: readonly AbstractMesh[],
+    hex: string,
+    useOriginalTexture: boolean
+  ): void {
     const color = Color3.FromHexString(hex);
     for (const mesh of meshes) {
-      if (mesh.material instanceof PBRMaterial) {
-        mesh.material.albedoColor.copyFrom(color);
-      } else if (mesh.material instanceof StandardMaterial) {
-        mesh.material.diffuseColor.copyFrom(color);
-      }
+      tintMaterial(mesh.material, color, { useOriginalTexture });
     }
   }
 }

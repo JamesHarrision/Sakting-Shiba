@@ -20,6 +20,19 @@ describe("PlayerController", () => {
     );
   });
 
+  it("boosts the current ascent when Spring Paws is collected mid-jump", () => {
+    const controller = new PlayerController(new GameEventBus());
+    const jumpInput = { ...createEmptyInputSnapshot(), jump: true };
+    controller.update(jumpInput, 1 / 60);
+    const velocityBeforeSpring = controller.getSnapshot().verticalVelocity;
+
+    controller.setJumpMultiplier(2);
+
+    expect(controller.getSnapshot().verticalVelocity).toBeCloseTo(
+      velocityBeforeSpring * Math.sqrt(2)
+    );
+  });
+
   it("enters rocket flight and falls after the effect ends", () => {
     const controller = new PlayerController(new GameEventBus());
     controller.setFlightHeight(4);

@@ -100,7 +100,14 @@ export class PlayerController {
   }
 
   setJumpMultiplier(multiplier: number): void {
-    this.jumpMultiplier = Math.max(1, multiplier);
+    const nextMultiplier = Math.max(1, multiplier);
+    if (
+      this.verticalVelocity > 0 &&
+      nextMultiplier > this.jumpMultiplier
+    ) {
+      this.verticalVelocity *= Math.sqrt(nextMultiplier / this.jumpMultiplier);
+    }
+    this.jumpMultiplier = nextMultiplier;
   }
 
   getSnapshot(): PlayerControllerSnapshot {

@@ -169,13 +169,7 @@ engine.runRenderLoop(() => {
     tutorial.update(deltaSeconds);
     powerUps.update(deltaSeconds);
     currentPowerUpSnapshot = powerUps.getSnapshot();
-    playerController.setFlightHeight(
-      currentPowerUpSnapshot.flightHeight > 0
-        ? currentPowerUpSnapshot.flightHeight
-        : null
-    );
-    playerController.setJumpMultiplier(currentPowerUpSnapshot.jumpMultiplier);
-    runStateStore.setScoreMultiplier(currentPowerUpSnapshot.scoreMultiplier);
+    applyPowerUpSnapshotToPlayer();
 
     const gameplayFrame = runGameplay.update(
       deltaSeconds,
@@ -279,6 +273,17 @@ function collectWorldItem(itemId: number, type: CollectibleItemType): void {
   }
   powerUps.activate(type.replace("powerup_", "") as "magnet" | "spring" | "rocket" | "star");
   currentPowerUpSnapshot = powerUps.getSnapshot();
+  applyPowerUpSnapshotToPlayer();
+}
+
+function applyPowerUpSnapshotToPlayer(): void {
+  playerController.setFlightHeight(
+    currentPowerUpSnapshot.flightHeight > 0
+      ? currentPowerUpSnapshot.flightHeight
+      : null
+  );
+  playerController.setJumpMultiplier(currentPowerUpSnapshot.jumpMultiplier);
+  runStateStore.setScoreMultiplier(currentPowerUpSnapshot.scoreMultiplier);
 }
 
 function beginCountdown(withTutorial: boolean): void {

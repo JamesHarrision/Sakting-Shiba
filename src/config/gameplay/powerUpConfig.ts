@@ -24,7 +24,7 @@ export const POWER_UP_CONFIG: Readonly<Record<PowerUpType, PowerUpConfig>> =
       speedMultiplier: 1,
       collectionDistance: 0,
       flightHeight: 0,
-      jumpMultiplier: 1.65,
+      jumpMultiplier: 2,
       scoreMultiplier: 1
     }),
     rocket: Object.freeze({
