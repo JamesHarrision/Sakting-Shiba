@@ -53,6 +53,7 @@ void runScene.startAssetLoad();
 let playerVisualSnapshot = playerController.getVisualSnapshot();
 let playerColliderSnapshot: Readonly<PlayerColliderSnapshot> =
   playerColliderController.update(playerController.getSnapshot());
+let currentSpeed = runStateStore.getSnapshot().speed;
 let isManualPaused = false;
 let isWindowFocused = document.hasFocus();
 let isDisposed = false;
@@ -78,8 +79,9 @@ engine.runRenderLoop(() => {
     playerVisualSnapshot = playerController.getVisualSnapshot();
     playerColliderSnapshot = playerColliderController.update(playerSnapshot);
 
-    const state = runStateStore.getSnapshot();
-    runStateStore.addDistance(state.speed * deltaSeconds);
+    const runState = runStateStore.getSnapshot();
+    runStateStore.addDistance(runState.speed * deltaSeconds);
+    currentSpeed = runState.speed;
   }
 
   const frameSnapshot: PlayerVisualSnapshot = clock.isPaused()
@@ -93,7 +95,8 @@ engine.runRenderLoop(() => {
     deltaSeconds,
     frameSnapshot,
     playerColliderSnapshot,
-    cameraSnapshot
+    cameraSnapshot,
+    currentSpeed
   );
   scene.render();
 });
