@@ -54,6 +54,78 @@ button:focus-visible {
   user-select: none;
 }
 
+.game-feel-layer {
+  --speed-strength: 0;
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.impact-flash {
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  opacity: 0;
+}
+
+.speed-lines {
+  position: absolute;
+  inset: 0;
+  opacity: calc(var(--speed-strength) * 0.34);
+  transition: opacity 500ms var(--motion);
+}
+
+.speed-lines i {
+  position: absolute;
+  top: calc(5% + var(--line) * 7.5%);
+  left: calc(2% + var(--line) * 7%);
+  width: calc(44px + var(--line) * 5px);
+  height: 2px;
+  background: rgba(255, 255, 255, 0.72);
+  transform: skewX(-24deg) translateX(-20vw);
+  animation: speed-streak calc(900ms - var(--line) * 22ms) var(--motion) infinite;
+  animation-delay: calc(var(--line) * -73ms);
+  animation-play-state: paused;
+}
+
+.game-feel-layer.is-speeding .speed-lines i {
+  animation-play-state: running;
+}
+
+.game-feel-layer.has-rush .speed-lines {
+  opacity: 0.9;
+}
+
+.game-feel-layer.has-rush .speed-lines i {
+  background: var(--mint);
+}
+
+.game-feel-layer.has-rocket .speed-lines i {
+  height: 3px;
+  background: var(--blue);
+}
+
+.game-feel-layer.has-magnet .speed-lines i:nth-child(3n) {
+  background: #ff8098;
+}
+
+.game-feel-layer.is-hit .impact-flash {
+  background: var(--coral);
+  animation: impact-flash 420ms var(--motion) both;
+}
+
+.game-feel-layer.is-coin .impact-flash {
+  background: var(--yellow);
+  animation: coin-flash 160ms var(--motion) both;
+}
+
+.game-feel-layer.is-power .impact-flash,
+.game-feel-layer.is-landing .impact-flash {
+  animation: soft-flash 300ms var(--motion) both;
+}
+
 .game-overlay {
   position: absolute;
   inset: 0;
@@ -272,6 +344,29 @@ button:focus-visible {
   transform: translateY(-2px);
 }
 
+.audio-toggle {
+  position: absolute;
+  right: 18px;
+  top: 78px;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(14, 17, 22, 0.76);
+  color: var(--paper);
+  cursor: pointer;
+  pointer-events: auto;
+  font-size: 18px;
+  font-weight: 900;
+  transition: transform 400ms var(--motion), background-color 400ms var(--motion);
+}
+
+.audio-toggle:hover {
+  background: var(--yellow);
+  color: var(--ink);
+  transform: rotate(-8deg) scale(1.08);
+}
+
 .result-stats {
   display: flex;
   flex-wrap: wrap;
@@ -458,6 +553,26 @@ button:focus-visible {
 
 @keyframes power-in {
   from { opacity: 0; transform: translateY(-8px); }
+}
+
+@keyframes speed-streak {
+  from { transform: skewX(-24deg) translateX(-25vw); }
+  to { transform: skewX(-24deg) translateX(125vw); }
+}
+
+@keyframes impact-flash {
+  0% { opacity: 0.58; }
+  100% { opacity: 0; }
+}
+
+@keyframes coin-flash {
+  0% { opacity: 0.2; }
+  100% { opacity: 0; }
+}
+
+@keyframes soft-flash {
+  0% { opacity: 0.16; }
+  100% { opacity: 0; }
 }
 
 @media (pointer: coarse), (max-width: 800px) {

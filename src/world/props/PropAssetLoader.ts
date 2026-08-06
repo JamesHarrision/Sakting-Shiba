@@ -1,7 +1,7 @@
 import type { Scene } from "@babylonjs/core/scene";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import type { AssetContainer } from "@babylonjs/core/assetContainer";
-import "@babylonjs/loaders/glTF";
+import "../../assets/registerGltfLoader";
 import { getPropEntry, PROP_KINDS, type PropKind } from "../../config/visual/props.config";
 
 export type PropAssetState = "idle" | "loading" | "loaded" | "missing";
@@ -11,7 +11,10 @@ export type PropAssetState = "idle" | "loading" | "loaded" | "missing";
  * Missing files simply don't appear here -> the procedural builder stays active
  * with zero console noise.
  */
-const PROPS_URLS = import.meta.glob("/src/assets/models/props/*.glb", {
+const PROPS_URLS = import.meta.glob([
+  "/src/assets/models/props/*.glb",
+  "!/src/assets/models/props/building.glb"
+], {
   query: "?url",
   import: "default",
   eager: true

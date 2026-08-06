@@ -132,6 +132,10 @@ export class RunScene {
     this.playerVisual.applyCosmetics(catColor, boardColor);
   }
 
+  addCameraImpact(amount: number): void {
+    this.cameraController.addImpact(amount);
+  }
+
   toggleDebugHud(): void {
     this.debugHud.toggle();
   }

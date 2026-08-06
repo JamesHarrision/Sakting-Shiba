@@ -110,13 +110,31 @@ export class PropFactory {
       case "building": {
         const h = 3 + rand() * 3.5;
         const w = 1.4 + rand() * 1.4;
+        const depth = 1.2 + rand();
+        const palette = ["#4E5968", "#675765", "#4D6661", "#6B6253", "#47546B"];
+        const colorIndex = Math.min(
+          palette.length - 1,
+          Math.floor(rand() * palette.length)
+        );
         const body = MeshBuilder.CreateBox(
           "prop-building",
-          { width: w, height: h, depth: 1.2 + rand() },
+          { width: w, height: h, depth },
           this.scene
         );
-        body.material = this.materials.createMaterial("prop.building", "#565C6C");
+        body.material = this.materials.createMaterial(
+          `prop.building.${colorIndex}`,
+          palette[colorIndex]
+        );
         push(body, h / 2);
+        if (rand() > 0.45) {
+          const cap = MeshBuilder.CreateBox(
+            "prop-building-cap",
+            { width: w * 0.45, height: 0.32, depth: depth * 0.55 },
+            this.scene
+          );
+          cap.material = this.materials.createMaterial("rooftop.prop", "#484550");
+          push(cap, h + 0.16);
+        }
         break;
       }
       case "lamp": {

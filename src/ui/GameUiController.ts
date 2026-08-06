@@ -14,6 +14,7 @@ export interface GameUiActions {
   readonly onCloseStore: () => void;
   readonly onCosmeticAction: (item: CosmeticItem) => void;
   readonly onTutorialSkip: () => void;
+  readonly onToggleAudio: () => void;
   readonly onInput: (action: "moveLeft" | "moveRight" | "jump" | "crouch") => void;
 }
 
@@ -38,6 +39,7 @@ export class GameUiController {
       </header>
       <main class="game-overlay" data-ui="overlay"></main>
       <aside class="tutorial-callout" data-ui="tutorial" hidden></aside>
+      <button class="audio-toggle" data-action="audio" data-ui="audio" aria-label="Mute audio" title="Mute audio">♪</button>
       <nav class="touch-controls" aria-label="Game controls">
         <button data-input="moveLeft" aria-label="Move left">←</button>
         <button data-input="jump" aria-label="Jump">↑</button>
@@ -149,6 +151,13 @@ export class GameUiController {
     this.tutorial.innerHTML = `<strong>${copy[step]}</strong><button data-action="skip-tutorial">Skip</button>`;
   }
 
+  setAudioMuted(muted: boolean): void {
+    const button = this.requireElement<HTMLButtonElement>("[data-ui='audio']");
+    button.textContent = muted ? "×" : "♪";
+    button.setAttribute("aria-label", muted ? "Enable audio" : "Mute audio");
+    button.title = muted ? "Enable audio" : "Mute audio";
+  }
+
   dispose(): void {
     this.root.removeEventListener("click", this.handleClick);
     this.root.remove();
@@ -185,6 +194,7 @@ export class GameUiController {
     else if (action === "store") this.actions.onOpenStore();
     else if (action === "close-store") this.actions.onCloseStore();
     else if (action === "skip-tutorial") this.actions.onTutorialSkip();
+    else if (action === "audio") this.actions.onToggleAudio();
   };
 
   private requireElement<T extends HTMLElement = HTMLElement>(selector: string): T {

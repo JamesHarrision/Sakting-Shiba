@@ -11,6 +11,7 @@ import "@babylonjs/core/Shaders/rgbdDecode.fragment";
 import "@babylonjs/core/Shaders/rgbdEncode.fragment";
 
 import { PlayerAssetLoader } from "./assets/PlayerAssetLoader";
+import { GameAudioManager } from "./audio/GameAudioManager";
 import { WORLD_VISUAL_CONFIG } from "./config/visual/world-visual.config";
 import {
   getCosmetic,
@@ -32,6 +33,7 @@ import { KeyboardInputController } from "./input/KeyboardInputController";
 import { PlayerColliderController } from "./player/PlayerColliderController";
 import { RunScene } from "./scenes/RunScene";
 import { GameUiController } from "./ui/GameUiController";
+import { GameFeelController } from "./ui/GameFeelController";
 import "./style.css";
 
 type AppMode = "menu" | "countdown" | "running" | "paused" | "gameover" | "store";
@@ -51,6 +53,7 @@ const runGameplay = new RunGameplaySystem();
 const collisionSystem = new RunnerCollisionSystem();
 const powerUps = new PowerUpSystem(eventBus);
 const profileStore = new PlayerProfileStore(getLocalStorage());
+const audio = new GameAudioManager(eventBus);
 const playerColliderController = new PlayerColliderController({
   groundY: WORLD_VISUAL_CONFIG.trackThickness
 });
@@ -59,6 +62,9 @@ const keyboardInput = new KeyboardInputController(window);
 const runScene = new RunScene();
 const playerAssetLoader = new PlayerAssetLoader();
 const scene = runScene.create(engine, playerAssetLoader);
+const gameFeel = new GameFeelController(eventBus, (amount) =>
+  runScene.addCameraImpact(amount)
+);
 
 let appMode: AppMode = "menu";
 let storeReturnMode: AppMode = "menu";
@@ -80,15 +86,26 @@ const tutorial = new TutorialSystem(
 );
 
 ui = new GameUiController({
-  onStart: () => beginCountdown(!profileStore.getSnapshot().tutorialCompleted),
+  onStart: () => {
+    void audio.unlock().then(() => audio.setPaused(false));
+    beginCountdown(!profileStore.getSnapshot().tutorialCompleted);
+  },
   onPause: pauseRun,
   onResume: resumeRun,
-  onRestart: () => beginCountdown(!profileStore.getSnapshot().tutorialCompleted),
+  onRestart: () => {
+    void audio.unlock().then(() => audio.setPaused(false));
+    beginCountdown(!profileStore.getSnapshot().tutorialCompleted);
+  },
   onMenu: showMainMenu,
   onOpenStore: openStore,
   onCloseStore: closeStore,
   onCosmeticAction: handleCosmeticAction,
   onTutorialSkip: () => tutorial.skip(),
+  onToggleAudio: () => {
+    void audio.unlock();
+    audio.setMuted(!audio.isMuted);
+    ui.setAudioMuted(audio.isMuted);
+  },
   onInput: (action) => keyboardInput.queueAction(action)
 });
 
@@ -158,6 +175,7 @@ engine.runRenderLoop(() => {
     if (hudElapsed >= 0.1) {
       hudElapsed = 0;
       ui.updateHud(runStateStore.getSnapshot(), powerUps.getSnapshot());
+      gameFeel.update(currentSpeed, powerUps.getSnapshot());
     }
   }
 
@@ -197,6 +215,8 @@ function processCollisions(): void {
   powerUps.pause();
   currentSpeed = 0;
   appMode = "gameover";
+  gameFeel.update(0, powerUps.getSnapshot());
+  audio.setPaused(true);
   ui.showGameOver(runStateStore.getSnapshot(), profileStore.getSnapshot());
 }
 
@@ -232,6 +252,7 @@ function updateCountdown(deltaSeconds: number): void {
   clock.resume();
   runGameplay.resume();
   powerUps.resume();
+  audio.setPaused(false);
   ui.showRunning();
   ui.updateHud(runStateStore.getSnapshot(), powerUps.getSnapshot());
   if (startWithTutorial) tutorial.start();
@@ -261,6 +282,8 @@ function pauseRun(): void {
   runStateStore.pauseRun();
   runGameplay.pause();
   powerUps.pause();
+  audio.setPaused(true);
+  gameFeel.update(0, powerUps.getSnapshot());
   keyboardInput.reset();
   ui.showPaused();
 }
@@ -272,6 +295,7 @@ function resumeRun(): void {
   runStateStore.resumeRun();
   runGameplay.resume();
   powerUps.resume();
+  audio.setPaused(false);
   ui.showRunning();
 }
 
@@ -282,6 +306,8 @@ function showMainMenu(): void {
   clock.pause();
   runGameplay.pause();
   powerUps.pause();
+  audio.setPaused(true);
+  gameFeel.update(0, powerUps.getSnapshot());
   keyboardInput.reset();
   ui.showMenu(profileStore.getSnapshot());
 }
@@ -293,6 +319,7 @@ function openStore(): void {
   clock.pause();
   runGameplay.pause();
   powerUps.pause();
+  audio.setPaused(true);
   ui.showStore(profileStore.getSnapshot());
 }
 
@@ -359,6 +386,8 @@ function disposeGame(): void {
   window.removeEventListener("keydown", handleGameShortcut);
   window.removeEventListener("beforeunload", disposeGame);
   tutorial.dispose();
+  gameFeel.dispose();
+  audio.dispose();
   ui.dispose();
   keyboardInput.detach();
   engine.stopRenderLoop();

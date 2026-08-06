@@ -4,7 +4,7 @@ import type { AnimationGroup } from "@babylonjs/core/Animations/animationGroup";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import type { AssetContainer } from "@babylonjs/core/assetContainer";
-import "@babylonjs/loaders/glTF";
+import "./registerGltfLoader";
 import {
   getAssetEntry,
   PLAYER_ASSET_IDS,

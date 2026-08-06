@@ -20,6 +20,7 @@ import { isObstacleItem } from "../../gameplay/spawning/spawnItemGuards";
 import { StraightChunkA } from "./chunks/StraightChunkA";
 import { StraightChunkB } from "./chunks/StraightChunkB";
 import { StraightChunkC } from "./chunks/StraightChunkC";
+import { StraightChunkD } from "./chunks/StraightChunkD";
 import type { TrackChunk } from "./chunks/TrackChunk";
 
 const CFG = WORLD_VISUAL_CONFIG;
@@ -134,7 +135,12 @@ export class TrackManager {
     this.root.parent = parent;
     this.props = props;
 
-    const variantCtors = [StraightChunkA, StraightChunkB, StraightChunkC];
+    const variantCtors = [
+      StraightChunkA,
+      StraightChunkB,
+      StraightChunkC,
+      StraightChunkD
+    ];
     for (let i = 0; i < this.chunkCount; i++) {
       const ctor = variantCtors[i % variantCtors.length];
       const chunk = new ctor({

@@ -27,5 +27,5 @@ export interface TrackDebugStats {
 }
 
 /** Chunk variants available for rotation */
-export const TRACK_CHUNK_VARIANTS = ["A", "B", "C"] as const;
+export const TRACK_CHUNK_VARIANTS = ["A", "B", "C", "D"] as const;
 export type TrackChunkVariant = (typeof TRACK_CHUNK_VARIANTS)[number];
