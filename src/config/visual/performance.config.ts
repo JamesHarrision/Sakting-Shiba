@@ -11,7 +11,7 @@ export interface PerformanceConfig {
 
 export const PERFORMANCE_CONFIG: Readonly<PerformanceConfig> = Object.freeze({
   targetFps: 120,
-  initialHardwareScalingLevel: 1.35,
+  initialHardwareScalingLevel: 1,
   minimumHardwareScalingLevel: 1,
   maximumHardwareScalingLevel: 2.25,
   sampleWindowSeconds: 1.5,

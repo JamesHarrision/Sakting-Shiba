@@ -1,5 +1,6 @@
 import type { Scene } from "@babylonjs/core/scene";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
+import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import type { MaterialsRegistry } from "../../assets/MaterialsRegistry";
@@ -38,6 +39,8 @@ interface ActiveSpawnItem {
   readonly height: number;
   readonly depth: number;
   readonly centerX: number;
+  readonly visual?: Mesh;
+  readonly visualBaseY?: number;
   worldZ: number;
 }
 
@@ -75,7 +78,7 @@ export class TrackManager {
   private readonly chunks: TrackChunk[] = [];
   private readonly obstaclePool: SpawnItemPool;
   private readonly obstacleWarningPool: SpawnItemPool;
-  private readonly pickupPool: SpawnItemPool;
+  private readonly pickupPools: Readonly<Record<CollectibleItemType, SpawnItemPool>>;
   private readonly activeItems: ActiveSpawnItem[] = [];
 
   private readonly chunkLength = CFG.trackChunkLength;
@@ -106,10 +109,14 @@ export class TrackManager {
       "spawn.obstacle",
       CFG.spawnObstacleColor
     );
-    const pickupMat = materials.createMaterial(
-      "spawn.pickup",
-      CFG.spawnPickupColor
-    );
+    const coinMat = materials.createMaterial("spawn.coin", "#FFD45A");
+    const magnetMat = materials.createMaterial("spawn.powerup-magnet", "#F05A78");
+    const springMat = materials.createMaterial("spawn.powerup-spring", "#53E0C1");
+    const rocketMat = materials.createMaterial("spawn.powerup-rocket", "#64A8FF");
+    const starMat = materials.createMaterial("spawn.powerup-star", "#FFE56B");
+    for (const material of [coinMat, magnetMat, springMat, rocketMat, starMat]) {
+      material.emissiveColor = material.diffuseColor.scale(0.42);
+    }
     const obstacleWarningMat = materials.createMaterial(
       "spawn.obstacleWarning",
       "#FFB547",
@@ -138,15 +145,56 @@ export class TrackManager {
       return mesh;
     });
 
-    this.pickupPool = new SpawnItemPool(scene, 16, () => {
-      const mesh = MeshBuilder.CreateSphere(
-        "pooled-pickup",
-        { diameter: 0.55, segments: 8 },
-        scene
-      );
-      mesh.material = pickupMat;
-      return mesh;
-    });
+    this.pickupPools = {
+      coin: new SpawnItemPool(scene, 16, () => {
+        const mesh = MeshBuilder.CreateCylinder(
+          "pooled-pickup",
+          { diameter: 0.54, height: 0.13, tessellation: 16 },
+          scene
+        );
+        mesh.rotation.x = Math.PI / 2;
+        mesh.material = coinMat;
+        return mesh;
+      }),
+      powerup_magnet: new SpawnItemPool(scene, 0, () => {
+        const mesh = MeshBuilder.CreateTorus(
+          "pooled-powerup-magnet",
+          { diameter: 0.62, thickness: 0.17, tessellation: 12 },
+          scene
+        );
+        mesh.rotation.x = Math.PI / 2;
+        mesh.material = magnetMat;
+        return mesh;
+      }, 1),
+      powerup_spring: new SpawnItemPool(scene, 0, () => {
+        const mesh = MeshBuilder.CreateTorus(
+          "pooled-powerup-spring",
+          { diameter: 0.62, thickness: 0.13, tessellation: 8 },
+          scene
+        );
+        mesh.scaling.y = 0.62;
+        mesh.material = springMat;
+        return mesh;
+      }, 1),
+      powerup_rocket: new SpawnItemPool(scene, 0, () => {
+        const mesh = MeshBuilder.CreateCylinder(
+          "pooled-powerup-rocket",
+          { diameterTop: 0.16, diameterBottom: 0.46, height: 0.82, tessellation: 8 },
+          scene
+        );
+        mesh.material = rocketMat;
+        return mesh;
+      }, 1),
+      powerup_star: new SpawnItemPool(scene, 0, () => {
+        const mesh = MeshBuilder.CreatePolyhedron(
+          "pooled-powerup-star",
+          { type: 1, size: 0.42 },
+          scene
+        );
+        mesh.material = starMat;
+        return mesh;
+      }, 1)
+    };
   }
 
   build(parent: TransformNode, props: PropFactory): void {
@@ -192,6 +240,13 @@ export class TrackManager {
     this.lastSpeed = speed;
     this.scrollDistance += speed * deltaSeconds;
     this.trackRoot.position.z = -this.scrollDistance;
+
+    for (const item of this.activeItems) {
+      if (!item.visual || item.visualBaseY === undefined) continue;
+      item.visual.rotation.y += deltaSeconds * (item.type === "coin" ? 4.8 : 2.8);
+      item.visual.position.y =
+        item.visualBaseY + Math.sin(this.scrollDistance * 0.14 + item.id) * 0.08;
+    }
 
     this.recycleChunks();
     this.recycleSpawnItems();
@@ -297,7 +352,7 @@ export class TrackManager {
     this.releaseAllSpawnItems();
     this.obstaclePool.dispose();
     this.obstacleWarningPool.dispose();
-    this.pickupPool.dispose();
+    for (const pool of Object.values(this.pickupPools)) pool.dispose();
     for (const chunk of this.chunks) {
       chunk.dispose();
     }
@@ -423,7 +478,8 @@ export class TrackManager {
   ): void {
     const id = this.nextItemId++;
     const centerY = CFG.trackThickness + 0.65;
-    const mesh = this.pickupPool.acquire(
+    const pool = this.pickupPools[type];
+    const mesh = pool.acquire(
       this.spawnRoot,
       this.reusePosition.set(
         LANE_X_POSITIONS[lane],
@@ -435,20 +491,11 @@ export class TrackManager {
       this.warnPoolExhausted("pickup");
       return;
     }
-    const colorByType: Readonly<Record<CollectibleItemType, string>> = {
-      coin: "#FFD45A",
-      powerup_magnet: "#F05A78",
-      powerup_spring: "#53E0C1",
-      powerup_rocket: "#64A8FF",
-      powerup_star: "#FFE56B"
-    };
-    mesh.material = this.materials.createMaterial(
-      `spawn.${type}`,
-      colorByType[type]
-    );
+    resetPickupRotation(mesh, type);
     mesh.scaling.setAll(type === "coin" ? 1 : 1.35);
+    if (type === "powerup_spring") mesh.scaling.y *= 0.62;
     this.activeItems.push({
-      release: () => this.pickupPool.release(mesh),
+      release: () => pool.release(mesh),
       localZ: worldZ,
       id,
       lane,
@@ -458,6 +505,8 @@ export class TrackManager {
       height: 0.55,
       depth: 0.55,
       centerX: LANE_X_POSITIONS[lane],
+      visual: mesh,
+      visualBaseY: centerY,
       worldZ
     });
   }
@@ -477,5 +526,12 @@ export class TrackManager {
     console.warn(
       `[TrackManager] ${kind} spawn pool exhausted; some placeholders skipped.`
     );
+  }
+}
+
+function resetPickupRotation(mesh: Mesh, type: CollectibleItemType): void {
+  mesh.rotation.set(0, 0, 0);
+  if (type === "coin" || type === "powerup_magnet") {
+    mesh.rotation.x = Math.PI / 2;
   }
 }

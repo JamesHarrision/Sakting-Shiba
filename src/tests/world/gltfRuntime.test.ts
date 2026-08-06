@@ -5,7 +5,7 @@ import { LoadAssetContainerAsync } from "@babylonjs/core/Loading/sceneLoader";
 import { Scene } from "@babylonjs/core/scene";
 import { describe, expect, it } from "vitest";
 
-import "../../assets/registerGltfLoader";
+import { ensureGltfLoader } from "../../assets/registerGltfLoader";
 import { optimizePropContainer } from "../../world/props/PropAssetLoader";
 
 describe("scoped glTF runtime", () => {
@@ -14,6 +14,7 @@ describe("scoped glTF runtime", () => {
     "public/assets/models/player/skateboard.glb",
     "src/assets/models/props/lamp.glb"
   ])("loads the shipped glTF 2 asset %s", async (assetPath) => {
+    await ensureGltfLoader();
     const engine = new NullEngine();
     const scene = new Scene(engine);
     const bytes = new Uint8Array(readFileSync(resolve(assetPath)));
@@ -29,6 +30,7 @@ describe("scoped glTF runtime", () => {
   });
 
   it("keeps the normalized building as one reusable mesh", async () => {
+    await ensureGltfLoader();
     const engine = new NullEngine();
     const scene = new Scene(engine);
     const assetPath = "src/assets/models/props/building.glb";

@@ -242,6 +242,34 @@ describe("TrackManager", () => {
     dispose();
   });
 
+  it("uses distinct pooled silhouettes for each power-up", () => {
+    const { scene, manager, dispose } = createFixture();
+    manager.submitSpawnRequests([
+      {
+        patternId: "powerup-visuals",
+        startZ: 20,
+        rows: [
+          { offsetZ: 0, lanes: ["powerup_magnet", "powerup_spring", "powerup_rocket"] },
+          { offsetZ: 3, lanes: ["powerup_star", "empty", "empty"] }
+        ]
+      }
+    ]);
+
+    for (const name of [
+      "pooled-powerup-magnet",
+      "pooled-powerup-spring",
+      "pooled-powerup-rocket",
+      "pooled-powerup-star"
+    ]) {
+      expect(scene.meshes.some((mesh) => mesh.name === name && mesh.isEnabled())).toBe(true);
+    }
+
+    const meshCount = scene.meshes.length;
+    manager.reset();
+    expect(scene.meshes.length).toBe(meshCount);
+    dispose();
+  });
+
   it("pause() freezes the track and resume() continues without teleporting", () => {
     const { manager, dispose } = createFixture();
 

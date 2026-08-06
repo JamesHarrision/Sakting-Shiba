@@ -6,7 +6,7 @@ import {
   type ISceneLoaderAsyncResult
 } from "@babylonjs/core/Loading/sceneLoader";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
-import "./registerGltfLoader";
+import { ensureGltfLoader } from "./registerGltfLoader";
 import {
   getAssetEntry,
   PLAYER_ASSET_IDS,
@@ -85,6 +85,7 @@ export class PlayerAssetLoader {
     this.loadErrors.delete(id);
 
     try {
+      await ensureGltfLoader();
       const loaded = await ImportMeshAsync(entry.url, this.scene);
       if (this.disposed) {
         disposeLoadedAssets(loaded);

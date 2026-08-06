@@ -1,5 +1,7 @@
-import "@babylonjs/loaders/glTF/glTFFileLoader";
-import "@babylonjs/loaders/glTF/2.0/glTFLoader";
-import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_materials_unlit";
-import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_materials_specular";
-import "@babylonjs/loaders/glTF/2.0/Extensions/KHR_materials_emissive_strength";
+let runtimePromise: Promise<unknown> | undefined;
+
+/** Loads the GLB parser only when model preloading begins. */
+export function ensureGltfLoader(): Promise<unknown> {
+  runtimePromise ??= import("./gltfRuntime");
+  return runtimePromise;
+}

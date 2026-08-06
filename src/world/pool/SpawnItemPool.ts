@@ -6,7 +6,7 @@ import type { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { ObjectPool } from "./ObjectPool";
 
 /**
- * Pool of procedural fallback meshes (box obstacles / sphere pickups).
+ * Pool of lightweight gameplay meshes (obstacles and collectible silhouettes).
  * Meshes are created once and reused; acquired items are parented to the
  * requesting chunk's spawn root so they scroll with the track.
  */
@@ -17,7 +17,8 @@ export class SpawnItemPool {
   constructor(
     scene: Scene,
     initialSize: number,
-    factory: (index: number) => Mesh
+    factory: (index: number) => Mesh,
+    maximumSize = initialSize
   ) {
     this.factory = factory;
     this.pool = new ObjectPool<Mesh>(
@@ -30,6 +31,7 @@ export class SpawnItemPool {
       },
       {
         initialSize,
+        maximumSize,
         reset: (mesh) => {
           mesh.setEnabled(false);
           mesh.parent = null;

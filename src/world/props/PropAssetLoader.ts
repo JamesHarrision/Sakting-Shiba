@@ -2,7 +2,7 @@ import type { Scene } from "@babylonjs/core/scene";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import type { AssetContainer } from "@babylonjs/core/assetContainer";
 import { Mesh } from "@babylonjs/core/Meshes/mesh";
-import "../../assets/registerGltfLoader";
+import { ensureGltfLoader } from "../../assets/registerGltfLoader";
 import { getPropEntry, PROP_KINDS, type PropKind } from "../../config/visual/props.config";
 
 export type PropAssetState = "idle" | "loading" | "loaded" | "missing";
@@ -41,6 +41,7 @@ export class PropAssetLoader {
   }
 
   async prefetchAll(): Promise<void> {
+    await ensureGltfLoader();
     await Promise.all(PROP_KINDS.map((kind) => this.prefetch(kind)));
   }
 
