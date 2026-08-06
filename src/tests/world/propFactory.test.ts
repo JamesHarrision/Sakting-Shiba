@@ -1,4 +1,5 @@
 import { NullEngine } from "@babylonjs/core/Engines/nullEngine";
+import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Scene } from "@babylonjs/core/scene";
@@ -53,8 +54,9 @@ const ALL_PROP_KINDS = [
 ] as const;
 
 describe("PropFactory", () => {
-  it("keeps the 107-node building source asset out of the runtime budget", () => {
-    expect(getPropEntry("building").useAsset).toBe(false);
+  it("enables the building GLB only through the merged-mesh path", () => {
+    expect(getPropEntry("building").useAsset).toBe(true);
+    expect(getPropEntry("building").mergeMeshes).toBe(true);
   });
 
   it("builds every kind procedurally and disposes them cleanly", () => {
@@ -98,5 +100,39 @@ describe("PropFactory", () => {
     handle.dispose();
     expect(scene.meshes.length).toBe(before);
     dispose();
+  });
+
+  it("clones a merged building template without requiring an asset container", () => {
+    const engine = new NullEngine();
+    const scene = new Scene(engine);
+    const materials = new MaterialsRegistry(scene);
+    const template = MeshBuilder.CreateBox("building-template", {}, scene);
+    template.setEnabled(false);
+    const loader = {
+      has: () => true,
+      getOptimizedTemplate: () => template,
+      getContainer: () => undefined
+    } as unknown as PropAssetLoader;
+    const factory = new PropFactory(scene, materials, loader);
+    const parent = new TransformNode("props", scene);
+
+    const handle = factory.create(
+      "building",
+      parent,
+      new Vector3(4, 0, 12),
+      11
+    );
+    const clone = scene.meshes.find(
+      (mesh) => mesh.name === "prop-building-optimized-instance"
+    );
+
+    expect(clone?.isEnabled()).toBe(true);
+    expect(clone?.parent?.parent).toBe(parent);
+    handle.dispose();
+    expect(clone?.isDisposed()).toBe(true);
+    template.dispose();
+    materials.dispose();
+    scene.dispose();
+    engine.dispose();
   });
 });

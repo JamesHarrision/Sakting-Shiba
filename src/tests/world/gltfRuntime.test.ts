@@ -6,6 +6,7 @@ import { Scene } from "@babylonjs/core/scene";
 import { describe, expect, it } from "vitest";
 
 import "../../assets/registerGltfLoader";
+import { optimizePropContainer } from "../../world/props/PropAssetLoader";
 
 describe("scoped glTF runtime", () => {
   it.each([
@@ -23,6 +24,28 @@ describe("scoped glTF runtime", () => {
 
     expect(container.meshes.length).toBeGreaterThan(0);
     container.dispose();
+    scene.dispose();
+    engine.dispose();
+  });
+
+  it("collapses the 107-node building asset into one reusable mesh", async () => {
+    const engine = new NullEngine();
+    const scene = new Scene(engine);
+    const assetPath = "src/assets/models/props/building.glb";
+    const bytes = new Uint8Array(readFileSync(resolve(assetPath)));
+    const container = await LoadAssetContainerAsync(bytes, scene, {
+      pluginExtension: ".glb",
+      name: assetPath
+    });
+
+    expect(container.meshes.filter((mesh) => mesh.getTotalVertices() > 0).length)
+      .toBeGreaterThan(100);
+    const template = optimizePropContainer(container, "building");
+
+    expect(template.getTotalVertices()).toBeGreaterThan(0);
+    expect(template.isEnabled()).toBe(false);
+    expect(scene.meshes.filter((mesh) => !mesh.isDisposed())).toEqual([template]);
+    template.dispose(false, true);
     scene.dispose();
     engine.dispose();
   });

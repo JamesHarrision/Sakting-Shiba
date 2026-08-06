@@ -39,6 +39,8 @@ export interface PropAssetEntry {
   readonly assetPath: string | null;
   /** False for source assets that exceed the runtime draw-call budget. */
   readonly useAsset: boolean;
+  /** Collapses a single-material GLB into one reusable mesh before cloning. */
+  readonly mergeMeshes?: boolean;
   /** Applied to the GLB instance; unused for procedural builders. */
   readonly calibration: PropCalibration;
 }
@@ -47,7 +49,7 @@ export interface PropAssetEntry {
  * Calibration per kind, computed from the real GLB audit (scripts/audit-props.mjs).
  * World bbox at scale 1:
  * - box 2x2x2 (center pivot)        -> scale 0.45 => 0.9 cube
- * - building 5.8x5.1x8.9 (center)   -> scale 0.8, base at y=-2.707
+ * - building 5.8x5.1x8.9 (offset)   -> scale 0.6, recentered on its base
  * - cone Z-up (axis along Z)        -> scale 0.3, rotate x -90 to stand
  * - dumpster 2.2x2.3x2.8 (center)   -> scale 0.45, base at y=-1.167
  * - fence 20x40x96 (length along Z) -> scale 0.025
@@ -69,9 +71,10 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
   {
     kind: "building",
     assetPath: `${PROPS_ASSET_DIR}/building.glb`,
-    useAsset: false,
+    useAsset: true,
+    mergeMeshes: true,
     calibration: {
-      position: { x: 0, y: 0, z: 0 },
+      position: { x: -0.165, y: 1.624, z: -1.185 },
       rotationDegrees: { x: 0, y: 0, z: 0.5 },
       scale: 0.6,
     },

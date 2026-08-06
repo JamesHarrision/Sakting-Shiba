@@ -54,8 +54,9 @@ export class PropFactory {
     position: Vector3
   ): PropInstance {
     const entry = getPropEntry(kind);
+    const optimizedTemplate = this.loader.getOptimizedTemplate(kind);
     const container = this.loader.getContainer(kind);
-    if (!container) {
+    if (!optimizedTemplate && !container) {
       return { dispose: () => {} };
     }
 
@@ -73,6 +74,21 @@ export class PropFactory {
     );
     instanceRoot.scaling.setAll(entry.calibration.scale);
 
+    if (optimizedTemplate) {
+      const clone = optimizedTemplate.clone(`prop-${kind}-optimized-instance`);
+      if (!clone) {
+        instanceRoot.dispose();
+        return { dispose: () => {} };
+      }
+      clone.parent = instanceRoot;
+      clone.position.setAll(0);
+      clone.rotation.setAll(0);
+      clone.scaling.setAll(1);
+      clone.setEnabled(true);
+      return { dispose: () => instanceRoot.dispose() };
+    }
+
+    if (!container) return { dispose: () => instanceRoot.dispose() };
     const result = container.instantiateModelsToScene(
       (name) => `prop-${kind}-${name}`
     );

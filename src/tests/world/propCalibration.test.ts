@@ -4,6 +4,27 @@ import { OBSTACLE_RULES } from "../../config/gameplay/obstacleConfig";
 import { getPropEntry } from "../../config/visual/props.config";
 
 describe("obstacle asset calibration", () => {
+  it("centers the merged building asset and places its base on the rooftop", () => {
+    const building = getPropEntry("building");
+    const sourceMinimum = { x: -2.619, y: -2.707, z: -2.457 };
+    const sourceMaximum = { x: 3.168, y: 2.427, z: 6.408 };
+    const centerX = (sourceMinimum.x + sourceMaximum.x) / 2;
+    const centerZ = (sourceMinimum.z + sourceMaximum.z) / 2;
+
+    expect(building.useAsset).toBe(true);
+    expect(building.mergeMeshes).toBe(true);
+    expect(
+      building.calibration.position.y +
+        sourceMinimum.y * building.calibration.scale
+    ).toBeCloseTo(0, 2);
+    expect(
+      building.calibration.position.x + centerX * building.calibration.scale
+    ).toBeCloseTo(0, 2);
+    expect(
+      building.calibration.position.z + centerZ * building.calibration.scale
+    ).toBeCloseTo(0, 2);
+  });
+
   it("places the center-pivoted box on top of the track", () => {
     const box = getPropEntry("box");
     const sourceMinimumY = -1;

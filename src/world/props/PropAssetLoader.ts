@@ -1,6 +1,7 @@
 import type { Scene } from "@babylonjs/core/scene";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import type { AssetContainer } from "@babylonjs/core/assetContainer";
+import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import "../../assets/registerGltfLoader";
 import { getPropEntry, PROP_KINDS, type PropKind } from "../../config/visual/props.config";
 
@@ -12,8 +13,7 @@ export type PropAssetState = "idle" | "loading" | "loaded" | "missing";
  * with zero console noise.
  */
 const PROPS_URLS = import.meta.glob([
-  "/src/assets/models/props/*.glb",
-  "!/src/assets/models/props/building.glb"
+  "/src/assets/models/props/*.glb"
 ], {
   query: "?url",
   import: "default",
@@ -26,6 +26,7 @@ const PROPS_URLS = import.meta.glob([
  */
 export class PropAssetLoader {
   private readonly containers = new Map<PropKind, AssetContainer>();
+  private readonly optimizedTemplates = new Map<PropKind, Mesh>();
   private readonly states = new Map<PropKind, PropAssetState>();
   private scene!: Scene;
 
@@ -48,18 +49,26 @@ export class PropAssetLoader {
   }
 
   has(kind: PropKind): boolean {
-    return this.containers.has(kind);
+    return this.containers.has(kind) || this.optimizedTemplates.has(kind);
   }
 
   getContainer(kind: PropKind): AssetContainer | undefined {
     return this.containers.get(kind);
   }
 
+  getOptimizedTemplate(kind: PropKind): Mesh | undefined {
+    return this.optimizedTemplates.get(kind);
+  }
+
   dispose(): void {
     for (const container of this.containers.values()) {
       container.dispose();
     }
+    for (const template of this.optimizedTemplates.values()) {
+      template.dispose(false, true);
+    }
     this.containers.clear();
+    this.optimizedTemplates.clear();
     this.states.clear();
   }
 
@@ -89,10 +98,64 @@ export class PropAssetLoader {
         this.scene
       );
       container.removeAllFromScene();
-      this.containers.set(kind, container);
+      if (entry.mergeMeshes) {
+        const template = optimizePropContainer(container, kind);
+        this.optimizedTemplates.set(kind, template);
+      } else {
+        this.containers.set(kind, container);
+      }
       this.states.set(kind, "loaded");
     } catch {
       this.states.set(kind, "missing");
     }
   }
+}
+
+export function optimizePropContainer(
+  container: AssetContainer,
+  kind: PropKind
+): Mesh {
+  const sourceMeshes = container.meshes.filter(
+    (mesh): mesh is Mesh => mesh instanceof Mesh && mesh.getTotalVertices() > 0
+  );
+  if (sourceMeshes.length === 0) {
+    container.dispose();
+    throw new Error(`Prop asset ${kind} has no mergeable meshes.`);
+  }
+
+  const commonVertexKinds = sourceMeshes[0]
+    .getVerticesDataKinds()
+    .filter((vertexKind) =>
+      sourceMeshes.every((mesh) => mesh.isVerticesDataPresent(vertexKind))
+    );
+  for (const mesh of sourceMeshes) {
+    for (const vertexKind of mesh.getVerticesDataKinds()) {
+      if (!commonVertexKinds.includes(vertexKind)) {
+        mesh.removeVerticesData(vertexKind);
+      }
+    }
+    mesh.computeWorldMatrix(true);
+  }
+  const merged = Mesh.MergeMeshes(
+    sourceMeshes,
+    false,
+    true,
+    undefined,
+    false,
+    false
+  );
+  if (!merged) {
+    container.dispose();
+    throw new Error(`Prop asset ${kind} could not be optimized.`);
+  }
+
+  const sourceMaterial = merged.material;
+  const clonedMaterial = sourceMaterial?.clone(`prop-${kind}-optimized-material`);
+  if (clonedMaterial) merged.material = clonedMaterial;
+  merged.name = `prop-${kind}-optimized-template`;
+  merged.isPickable = false;
+  merged.receiveShadows = false;
+  merged.setEnabled(false);
+  container.dispose();
+  return merged;
 }
