@@ -1,22 +1,16 @@
 import type { Scene } from "@babylonjs/core/scene";
 import { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
-import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import type { AssetContainer } from "@babylonjs/core/assetContainer";
 import { ensureGltfLoader } from "../../assets/registerGltfLoader";
 import { COSMETICS, type CosmeticItem } from "../../config/visual/cosmeticsConfig";
-import { PLAYER_MODEL_CONFIG } from "../../config/visual/player-model.config";
 
 /**
- * Identical calibration to the default player models so every cosmetic dog/board
- * lands in exactly the same spot as the built-in cat + skateboard.
+ * After normalize-player-glb.mjs, every cosmetic GLB contains a root
+ * normalization node that already handles scale/position/rotation.
+ * Non-default models can therefore use identity calibration.
  */
-const DOG_SCALE = PLAYER_MODEL_CONFIG.cat.scale;
-const DOG_POS_Y = PLAYER_MODEL_CONFIG.cat.position.y - PLAYER_MODEL_CONFIG.catSeatHeight;
-const BOARD_SCALE = PLAYER_MODEL_CONFIG.skateboard.scale;
-const BOARD_ROT_Y =
-  (PLAYER_MODEL_CONFIG.skateboard.rotationDegrees.y * Math.PI) / 180;
 
 const SRC_MODEL_URLS = import.meta.glob("/src/assets/models/player/*.glb", {
   query: "?url",
@@ -133,14 +127,10 @@ export class CosmeticModelLayer {
     }
   }
 
-  private instantiate(
+  private instantiateNonDefault(
     item: CosmeticItem,
     parent: TransformNode,
-    scale: number,
-    posX: number,
-    posY: number,
-    posZ: number,
-    rotY: number
+    name: string
   ): void {
     if (this.instances.has(item.id)) return;
     const container = this.containers.get(item.id);
@@ -149,12 +139,13 @@ export class CosmeticModelLayer {
     try {
       const root = new TransformNode(`cosmetic-${item.id}`, this.scene);
       root.parent = parent;
-      root.position.set(posX, posY, posZ);
-      root.rotation.y = rotY;
-      root.scaling.setAll(scale);
+      // The GLB already contains a root normalization node → identity placement
+      root.position.set(0, 0, 0);
+      root.rotation.set(0, 0, 0);
+      root.scaling.setAll(1);
 
       const result = container.instantiateModelsToScene(
-        (name) => `cosm-${item.id}-${name}`
+        (n) => `cosm-${item.id}-${n}`
       );
       for (const importedRoot of result.rootNodes) {
         importedRoot.parent = root;
@@ -163,14 +154,6 @@ export class CosmeticModelLayer {
         false,
         (node) => node instanceof AbstractMesh
       ) as AbstractMesh[];
-
-      // Center the imported hierarchy at the root's origin so the scale
-      // and position from the calibration are applied cleanly.
-      const bounds = computeWorldBounds(meshes);
-      const cx = (bounds.min.x + bounds.max.x) / 2;
-      const cy = bounds.min.y;
-      const cz = (bounds.min.z + bounds.max.z) / 2;
-      root.position.addInPlace(new Vector3(-cx, -cy, -cz));
 
       this.instances.set(item.id, {
         root,
@@ -183,24 +166,15 @@ export class CosmeticModelLayer {
   }
 
   private instantiateDog(item: CosmeticItem): void {
-    this.instantiate(item, this.dogMount, DOG_SCALE, 0, DOG_POS_Y, 0, 0);
+    this.instantiateNonDefault(item, this.dogMount, "dog");
   }
 
   private instantiateBoard(item: CosmeticItem): void {
-    this.instantiate(
-      item,
-      this.boardMount,
-      BOARD_SCALE,
-      0,
-      0,
-      0,
-      BOARD_ROT_Y
-    );
+    this.instantiateNonDefault(item, this.boardMount, "board");
   }
 
   private instantiateHat(item: CosmeticItem): void {
-    // Hats are usually tiny; scale to ~0.3m tall
-    this.instantiate(item, this.hatMount, 0.24, 0, 0, 0, 0);
+    this.instantiateNonDefault(item, this.hatMount, "hat");
   }
 }
 
@@ -215,34 +189,6 @@ function getItem(
     ) ??
     COSMETICS[0]
   );
-}
-
-function computeWorldBounds(
-  meshes: readonly AbstractMesh[]
-): { min: Vector3; max: Vector3 } {
-  const min = new Vector3(
-    Number.POSITIVE_INFINITY,
-    Number.POSITIVE_INFINITY,
-    Number.POSITIVE_INFINITY
-  );
-  const max = new Vector3(
-    Number.NEGATIVE_INFINITY,
-    Number.NEGATIVE_INFINITY,
-    Number.NEGATIVE_INFINITY
-  );
-  for (const mesh of meshes) {
-    mesh.computeWorldMatrix(true);
-    const box = mesh.getBoundingInfo().boundingBox;
-    const lo = box.minimumWorld;
-    const hi = box.maximumWorld;
-    min.x = Math.min(min.x, lo.x);
-    min.y = Math.min(min.y, lo.y);
-    min.z = Math.min(min.z, lo.z);
-    max.x = Math.max(max.x, hi.x);
-    max.y = Math.max(max.y, hi.y);
-    max.z = Math.max(max.z, hi.z);
-  }
-  return { min, max };
 }
 
 function rootCleanup(scene: Scene, itemId: string): void {

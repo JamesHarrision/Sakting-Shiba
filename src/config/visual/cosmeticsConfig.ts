@@ -1,12 +1,5 @@
 import type { CosmeticCategory } from "../../gameplay/PlayerProfileStore";
 
-export interface CosmeticFit {
-  /** Target world height (models are auto-scaled to fit). */
-  readonly height?: number;
-  /** Target horizontal extent along Z (boards); X is scaled proportionally. */
-  readonly width?: number;
-}
-
 export interface CosmeticItem {
   readonly id: string;
   readonly category: CosmeticCategory;
@@ -17,28 +10,28 @@ export interface CosmeticItem {
   /**
    * GLB path. "/src/..." paths are resolved through Vite's import.meta.glob
    * (hashed URLs survive the production build); "/assets/..." paths are the
-   * public folder (player defaults). Null = no model (color swatch only).
+   * public folder. Null = no model (color swatch only).
+   * After running `scripts/normalize-player-glb.mjs`, every cosmetic GLB is
+   * self-calibrating (Y-up, feet at Y=0, centered, target height/length).
    */
   readonly model: string | null;
-  /** Auto-calibration target when a model is present. */
-  readonly fit: CosmeticFit;
 }
 
 export const COSMETICS: readonly CosmeticItem[] = Object.freeze([
-  // Hats (asset slot: src/assets/models/player/hat-*.glb)
-  { id: "hat.default", category: "hat", name: "Classic Cap", price: 0, color: "#E87848", accent: "#FFD08A", model: null, fit: {} },
-  { id: "hat.snapback", category: "hat", name: "Snapback", price: 90, color: "#D84C67", accent: "#79B8FF", model: "/src/assets/models/player/hat-snapback.glb", fit: { height: 0.34 } },
-  { id: "hat.headphones", category: "hat", name: "Street Phones", price: 200, color: "#343746", accent: "#53E0C1", model: "/src/assets/models/player/hat-headphones.glb", fit: { height: 0.4 } },
+  // Hats
+  { id: "hat.default", category: "hat", name: "Classic Cap", price: 0, color: "#E87848", accent: "#FFD08A", model: null },
+  { id: "hat.snapback", category: "hat", name: "Snapback", price: 90, color: "#D84C67", accent: "#79B8FF", model: "/src/assets/models/player/hat-snapback.glb" },
+  { id: "hat.headphones", category: "hat", name: "Street Phones", price: 200, color: "#343746", accent: "#53E0C1", model: "/src/assets/models/player/hat-headphones.glb" },
 
-  // Dogs (asset slot: src/assets/models/player/dog-*.glb)
-  { id: "dog.default", category: "dog", name: "Sunset Shiba", price: 0, color: "#E87848", accent: "#FFD08A", model: "/assets/models/player/cat.glb", fit: { height: 1.64 } },
-  { id: "dog.calico", category: "dog", name: "Calico Pop", price: 120, color: "#F2C879", accent: "#3E8F7C", model: "/src/assets/models/player/dog-calico.glb", fit: { height: 1.64 } },
-  { id: "dog.midnight", category: "dog", name: "Midnight Dash", price: 260, color: "#343746", accent: "#7EE0D2", model: "/src/assets/models/player/dog-midnight.glb", fit: { height: 1.64 } },
+  // Dogs
+  { id: "dog.default", category: "dog", name: "Sunset Shiba", price: 0, color: "#E87848", accent: "#FFD08A", model: "/assets/models/player/cat.glb" },
+  { id: "dog.calico", category: "dog", name: "Calico Pop", price: 120, color: "#F2C879", accent: "#3E8F7C", model: "/src/assets/models/player/dog-calico.glb" },
+  { id: "dog.midnight", category: "dog", name: "Midnight Dash", price: 260, color: "#343746", accent: "#7EE0D2", model: "/src/assets/models/player/dog-midnight.glb" },
 
-  // Skateboards (asset slot: src/assets/models/player/board-*.glb)
-  { id: "board.default", category: "board", name: "Street Timber", price: 0, color: "#68503E", accent: "#E8A84B", model: "/assets/models/player/skateboard.glb", fit: { width: 2.28 } },
-  { id: "board.mint", category: "board", name: "Mint Circuit", price: 160, color: "#3FAE9B", accent: "#F4D35E", model: "/src/assets/models/player/board-mint.glb", fit: { width: 2.28 } },
-  { id: "board.comet", category: "board", name: "Comet Deck", price: 320, color: "#D84C67", accent: "#79B8FF", model: "/src/assets/models/player/board-comet.glb", fit: { width: 2.28 } }
+  // Skateboards
+  { id: "board.default", category: "board", name: "Street Timber", price: 0, color: "#68503E", accent: "#E8A84B", model: "/assets/models/player/skateboard.glb" },
+  { id: "board.mint", category: "board", name: "Mint Circuit", price: 160, color: "#3FAE9B", accent: "#F4D35E", model: "/src/assets/models/player/board-mint.glb" },
+  { id: "board.comet", category: "board", name: "Comet Deck", price: 320, color: "#D84C67", accent: "#79B8FF", model: "/src/assets/models/player/board-comet.glb" }
 ]);
 
 export function getCosmetic(id: string): CosmeticItem {
