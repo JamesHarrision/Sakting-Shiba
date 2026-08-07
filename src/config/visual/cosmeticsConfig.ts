@@ -19,19 +19,91 @@ export interface CosmeticItem {
 
 export const COSMETICS: readonly CosmeticItem[] = Object.freeze([
   // Hats
-  { id: "hat.default", category: "hat", name: "Classic Cap", price: 0, color: "#E87848", accent: "#FFD08A", model: null },
-  { id: "hat.snapback", category: "hat", name: "Snapback", price: 90, color: "#D84C67", accent: "#79B8FF", model: "/src/assets/models/player/hat-snapback.glb" },
-  { id: "hat.headphones", category: "hat", name: "Street Phones", price: 200, color: "#343746", accent: "#53E0C1", model: "/src/assets/models/player/hat-headphones.glb" },
+  {
+    id: "hat.default",
+    category: "hat",
+    name: "No Cap",
+    price: 0,
+    color: "#E87848",
+    accent: "#FFD08A",
+    model: null,
+  },
+  {
+    id: "hat.snapback",
+    category: "hat",
+    name: "Snapback",
+    price: 90,
+    color: "#D84C67",
+    accent: "#79B8FF",
+    model: "/src/assets/models/player/hat-snapback.glb",
+  },
+  {
+    id: "hat.headphones",
+    category: "hat",
+    name: "Street Phones",
+    price: 200,
+    color: "#343746",
+    accent: "#53E0C1",
+    model: "/src/assets/models/player/hat-headphones.glb",
+  },
 
   // Dogs
-  { id: "dog.default", category: "dog", name: "Sunset Shiba", price: 0, color: "#E87848", accent: "#FFD08A", model: "/assets/models/player/cat.glb" },
-  { id: "dog.calico", category: "dog", name: "Calico Pop", price: 120, color: "#F2C879", accent: "#3E8F7C", model: "/src/assets/models/player/dog-calico.glb" },
-  { id: "dog.midnight", category: "dog", name: "Midnight Dash", price: 260, color: "#343746", accent: "#7EE0D2", model: "/src/assets/models/player/dog-midnight.glb" },
+  {
+    id: "dog.default",
+    category: "dog",
+    name: "Sunset Shiba",
+    price: 0,
+    color: "#E87848",
+    accent: "#FFD08A",
+    model: "/assets/models/player/cat.glb",
+  },
+  {
+    id: "dog.calico",
+    category: "dog",
+    name: "Calico Pop",
+    price: 120,
+    color: "#F2C879",
+    accent: "#3E8F7C",
+    model: "/src/assets/models/player/dog-calico.glb",
+  },
+  {
+    id: "dog.midnight",
+    category: "dog",
+    name: "Midnight Dash",
+    price: 260,
+    color: "#343746",
+    accent: "#7EE0D2",
+    model: "/src/assets/models/player/dog-midnight.glb",
+  },
 
   // Skateboards
-  { id: "board.default", category: "board", name: "Street Timber", price: 0, color: "#68503E", accent: "#E8A84B", model: "/assets/models/player/skateboard.glb" },
-  { id: "board.mint", category: "board", name: "Mint Circuit", price: 160, color: "#3FAE9B", accent: "#F4D35E", model: "/src/assets/models/player/board-mint.glb" },
-  { id: "board.comet", category: "board", name: "Comet Deck", price: 320, color: "#D84C67", accent: "#79B8FF", model: "/src/assets/models/player/board-comet.glb" }
+  {
+    id: "board.default",
+    category: "board",
+    name: "Street Timber",
+    price: 0,
+    color: "#68503E",
+    accent: "#E8A84B",
+    model: "/assets/models/player/skateboard.glb",
+  },
+  {
+    id: "board.mint",
+    category: "board",
+    name: "Mint Circuit",
+    price: 160,
+    color: "#3FAE9B",
+    accent: "#F4D35E",
+    model: "/src/assets/models/player/board-mint.glb",
+  },
+  {
+    id: "board.comet",
+    category: "board",
+    name: "Comet Deck",
+    price: 320,
+    color: "#D84C67",
+    accent: "#79B8FF",
+    model: "/src/assets/models/player/board-comet.glb",
+  },
 ]);
 
 export function getCosmetic(id: string): CosmeticItem {
@@ -39,7 +111,7 @@ export function getCosmetic(id: string): CosmeticItem {
 }
 
 export function getCosmeticsForCategory(
-  category: CosmeticCategory
+  category: CosmeticCategory,
 ): readonly CosmeticItem[] {
   return COSMETICS.filter((item) => item.category === category);
 }
@@ -47,5 +119,5 @@ export function getCosmeticsForCategory(
 export const COSMETIC_CATEGORIES: readonly CosmeticCategory[] = Object.freeze([
   "hat",
   "dog",
-  "board"
+  "board",
 ]);

@@ -5,12 +5,8 @@ import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import type { AssetContainer } from "@babylonjs/core/assetContainer";
 import { ensureGltfLoader } from "../../assets/registerGltfLoader";
 import { COSMETICS, type CosmeticItem } from "../../config/visual/cosmeticsConfig";
-
-/**
- * After normalize-player-glb.mjs, every cosmetic GLB contains a root
- * normalization node that already handles scale/position/rotation.
- * Non-default models can therefore use identity calibration.
- */
+import { PLAYER_MODEL_CONFIG } from "../../config/visual/player-model.config";
+import { COSMETIC_OVERRIDES } from "../../config/visual/cosmetic-tuning";
 
 const SRC_MODEL_URLS = import.meta.glob("/src/assets/models/player/*.glb", {
   query: "?url",
@@ -35,21 +31,22 @@ export interface CosmeticEquipResult {
   readonly showDefaultHat: boolean;
 }
 
-/** Only non-default GLB models are swapped in; the defaults stay as the built-in assets. */
 function isNonDefault(item: CosmeticItem): boolean {
   return !item.id.endsWith(".default");
 }
+
+/** PlayerModelView calibration (identical to what the default models use). */
+const CAT_CAL = PLAYER_MODEL_CONFIG.cat;
+const BOARD_CAL = PLAYER_MODEL_CONFIG.skateboard;
+const BOARD_SCALE = BOARD_CAL.scale;                  // 3.0
+const BOARD_ROT_Y = (BOARD_CAL.rotationDegrees.y * Math.PI) / 180; // 90°
+const DOG_FOOT_OFFSET = PLAYER_MODEL_CONFIG.catFootOffset;         // 0.657
 
 export class CosmeticModelLayer {
   private readonly containers = new Map<string, AssetContainer>();
   private readonly instances = new Map<string, CosmeticInstance>();
   private readonly hatMount: TransformNode;
   private loaded = false;
-
-  /** The dogMount sits catFootOffset above the board deck; dogs must come down. */
-  private static readonly DOG_FOOT_OFFSET = 0.657;
-  /** Hat mount sits just above the dog's head (head is ~1.42 above dog feet). */
-  private static readonly HAT_HEAD_Y = 1.42;
 
   constructor(
     private readonly scene: Scene,
@@ -58,7 +55,7 @@ export class CosmeticModelLayer {
   ) {
     this.hatMount = new TransformNode("cosmetic-hat-mount", this.scene);
     this.hatMount.parent = dogMount;
-    this.hatMount.position.set(0, CosmeticModelLayer.HAT_HEAD_Y, 0);
+    this.hatMount.position.set(0, 1.42, 0);
   }
 
   async preloadAll(): Promise<void> {
@@ -80,7 +77,11 @@ export class CosmeticModelLayer {
     }
   }
 
-  applyEquipped(dogId: string, boardId: string, hatId: string): CosmeticEquipResult {
+  applyEquipped(
+    dogId: string,
+    boardId: string,
+    hatId: string
+  ): CosmeticEquipResult {
     const dogItem = getItem("dog", dogId);
     const boardItem = getItem("board", boardId);
     const hatItem = getItem("hat", hatId);
@@ -132,56 +133,28 @@ export class CosmeticModelLayer {
     }
   }
 
-  private instantiateNonDefault(
-    item: CosmeticItem,
-    parent: TransformNode,
-    name: string
-  ): void {
+  private instantiateDog(item: CosmeticItem): void {
     if (this.instances.has(item.id)) return;
     const container = this.containers.get(item.id);
     if (!container) return;
 
-    try {
-      const root = new TransformNode(`cosmetic-${item.id}`, this.scene);
-      root.parent = parent;
-      // The GLB already contains a root normalization node → identity placement
-      root.position.set(0, 0, 0);
-      root.rotation.set(0, 0, 0);
-      root.scaling.setAll(1);
-
-      const result = container.instantiateModelsToScene(
-        (n) => `cosm-${item.id}-${n}`
-      );
-      for (const importedRoot of result.rootNodes) {
-        importedRoot.parent = root;
-      }
-      const meshes = root.getDescendants(
-        false,
-        (node) => node instanceof AbstractMesh
-      ) as AbstractMesh[];
-
-      this.instances.set(item.id, {
-        root,
-        meshes,
-        dispose: () => root.dispose()
-      });
-    } catch {
-      rootCleanup(this.scene, item.id);
-    }
-  }
-
-  private instantiateDog(item: CosmeticItem): void {
-    const container = this.containers.get(item.id);
-    if (!container || this.instances.has(item.id)) return;
-
+    const tune = COSMETIC_OVERRIDES[item.id] ?? {};
     try {
       const root = new TransformNode(`cosmetic-${item.id}`, this.scene);
       root.parent = this.dogMount;
-      // Normalized models have feet at their local Y=0.
-      // The dogMount is catFootOffset above the deck, so offset down.
-      root.position.set(0, -CosmeticModelLayer.DOG_FOOT_OFFSET, 0);
-      root.rotation.set(0, 0, 0);
-      root.scaling.setAll(1);
+      // Auto-normalized model has feet at local Y=0. DogMount sits
+      // DOG_FOOT_OFFSET above the deck → offset dog down.
+      root.position.set(
+        tune.position?.[0] ?? 0,
+        (tune.position?.[1] ?? 0) - DOG_FOOT_OFFSET,
+        tune.position?.[2] ?? 0
+      );
+      root.rotation.set(
+        (tune.rotation?.[0] ?? 0) * Math.PI / 180,
+        (tune.rotation?.[1] ?? 0) * Math.PI / 180,
+        (tune.rotation?.[2] ?? 0) * Math.PI / 180
+      );
+      root.scaling.setAll(tune.scale ?? 1);
 
       const result = container.instantiateModelsToScene(
         (n) => `cosm-${item.id}-${n}`
@@ -204,12 +177,90 @@ export class CosmeticModelLayer {
     }
   }
 
+  /** Boards use the SAME calibration as the default skateboard. */
   private instantiateBoard(item: CosmeticItem): void {
-    this.instantiateNonDefault(item, this.boardMount, "board");
+    if (this.instances.has(item.id)) return;
+    const container = this.containers.get(item.id);
+    if (!container) return;
+
+    const tune = COSMETIC_OVERRIDES[item.id] ?? {};
+    try {
+      const root = new TransformNode(`cosmetic-${item.id}`, this.scene);
+      root.parent = this.boardMount;
+      root.position.set(
+        tune.position?.[0] ?? 0,
+        tune.position?.[1] ?? 0,
+        tune.position?.[2] ?? 0
+      );
+      root.rotation.set(
+        (tune.rotation?.[0] ?? 0) * Math.PI / 180,
+        (tune.rotation?.[1] ?? 0) * Math.PI / 180 + BOARD_ROT_Y,
+        (tune.rotation?.[2] ?? 0) * Math.PI / 180
+      );
+      root.scaling.setAll((tune.scale ?? 1) * BOARD_SCALE);
+
+      const result = container.instantiateModelsToScene(
+        (n) => `cosm-${item.id}-${n}`
+      );
+      for (const importedRoot of result.rootNodes) {
+        importedRoot.parent = root;
+      }
+      const meshes = root.getDescendants(
+        false,
+        (node) => node instanceof AbstractMesh
+      ) as AbstractMesh[];
+
+      this.instances.set(item.id, {
+        root,
+        meshes,
+        dispose: () => root.dispose()
+      });
+    } catch {
+      rootCleanup(this.scene, item.id);
+    }
   }
 
+  /** Hats sit on the dog's head. */
   private instantiateHat(item: CosmeticItem): void {
-    this.instantiateNonDefault(item, this.hatMount, "hat");
+    if (this.instances.has(item.id)) return;
+    const container = this.containers.get(item.id);
+    if (!container) return;
+
+    const tune = COSMETIC_OVERRIDES[item.id] ?? {};
+    try {
+      const root = new TransformNode(`cosmetic-${item.id}`, this.scene);
+      root.parent = this.hatMount;
+      root.position.set(
+        tune.position?.[0] ?? 0,
+        tune.position?.[1] ?? 0,
+        tune.position?.[2] ?? 0
+      );
+      root.rotation.set(
+        (tune.rotation?.[0] ?? 0) * Math.PI / 180,
+        (tune.rotation?.[1] ?? 0) * Math.PI / 180,
+        (tune.rotation?.[2] ?? 0) * Math.PI / 180
+      );
+      root.scaling.setAll(tune.scale ?? 1);
+
+      const result = container.instantiateModelsToScene(
+        (n) => `cosm-${item.id}-${n}`
+      );
+      for (const importedRoot of result.rootNodes) {
+        importedRoot.parent = root;
+      }
+      const meshes = root.getDescendants(
+        false,
+        (node) => node instanceof AbstractMesh
+      ) as AbstractMesh[];
+
+      this.instances.set(item.id, {
+        root,
+        meshes,
+        dispose: () => root.dispose()
+      });
+    } catch {
+      rootCleanup(this.scene, item.id);
+    }
   }
 }
 

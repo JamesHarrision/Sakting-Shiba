@@ -18,8 +18,8 @@ const KEYS = [
   { file: "hat-headphones", kind: "hat", targetHeight: 0.30 },
   { file: "dog-calico", kind: "dog", targetHeight: 1.64 },
   { file: "dog-midnight", kind: "dog", targetHeight: 1.64 },
-  { file: "board-mint", kind: "board", targetLength: 2.28 },
-  { file: "board-comet", kind: "board", targetLength: 2.28 },
+  { file: "board-mint", kind: "board" },
+  { file: "board-comet", kind: "board" },
 ];
 
 const SRC_DIR = "src/assets/models/player";
@@ -118,9 +118,10 @@ for (const entry of KEYS) {
   const s = [1, 1, 1];
   const r = [0, 0, 0, 1];
   let rotateY90 = false;
+  let rotZ90 = false;
+  let rotQuatZ = [0, 0, 0, 1];
 
   const isDogOrHat = entry.kind === "dog" || entry.kind === "hat";
-  const maxHoriz = Math.max(span[0], span[2]);
 
   if (isDogOrHat) {
     const sy = span[1] > 0 ? entry.targetHeight / span[1] : 1;
@@ -137,20 +138,46 @@ for (const entry of KEYS) {
       r[3] = Math.cos(Math.PI / 4);
     }
   } else {
-    const sc = maxHoriz > 0 ? (entry.targetLength || 2.28) / maxHoriz : 1;
-    s[0] = sc; s[1] = sc; s[2] = sc;
-    if (span[0] > span[2] * 1.2) {
+    // ── Board: match skateboard.glb conventions ───────────────
+    // Default skateboard: length 0.76 along X, Y is thickness, Z is width.
+    // After PlayerModelView calibration (scale=3.0, rotY=90°), length
+    // becomes Z (track direction). We normalize boards to the same raw
+    // shape so cosmetic boards drop in as 1:1 replacements.
+    const skateXSpan = 0.76; // default skateboard.glb world X extent
+
+    // 1. Rotate the LONGEST axis to X
+    const axes = [
+      { a: 0, s: span[0] },
+      { a: 1, s: span[1] },
+      { a: 2, s: span[2] },
+    ];
+    axes.sort((a, b) => b.s - a.s);
+    const longestAxis = axes[0].a;
+
+    if (longestAxis === 1) {
+      // Length along Y → rotate -90° around Z
+      rotZ90 = true;
+      rotQuatZ = [0, 0, -Math.sin(Math.PI / 4), Math.cos(Math.PI / 4)];
+    } else if (longestAxis === 2) {
+      // Length along Z → rotate 90° around Y
       rotateY90 = true;
       r[1] = Math.sin(Math.PI / 4);
       r[3] = Math.cos(Math.PI / 4);
     }
+    // (if longest is X, no rotation needed)
+
+    // 2. Scale to match skateboard X length
+    const sc = axes[0].s > 0 ? skateXSpan / axes[0].s : 1;
+    s[0] = sc; s[1] = sc; s[2] = sc;
+
+    // 3. Center after uniform scale
     t[0] = -center[0] * sc;
     t[1] = -(bbox.min[1] + bbox.max[1]) / 2 * sc;
     t[2] = -center[2] * sc;
   }
 
   const changed = s[0] !== 1 || s[1] !== 1 || s[2] !== 1
-    || t[0] !== 0 || t[1] !== 0 || t[2] !== 0 || rotateY90;
+    || t[0] !== 0 || t[1] !== 0 || t[2] !== 0 || rotateY90 || rotZ90;
 
   if (!changed) {
     console.log(`  -> already normalized`);
@@ -170,6 +197,7 @@ for (const entry of KEYS) {
   const normNode = doc.createNode(`normalized-${entry.file}`);
   normNode.setTranslation(t);
   if (rotateY90) normNode.setRotation(r);
+  if (rotZ90) normNode.setRotation(rotQuatZ);
   normNode.setScale(s);
 
   const oldChildren = scene.listChildren().slice();
