@@ -1,4 +1,5 @@
 ﻿import type { Scene } from "@babylonjs/core/scene";
+import { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
@@ -97,6 +98,22 @@ export class PropFactory {
     for (const root of result.rootNodes) {
       // Direct parent assignment keeps the imported local transform intact
       root.parent = instanceRoot;
+    }
+
+    // Hide meshes the artist wants removed (e.g. cone.glb's grey base plate)
+    if (entry.hiddenMeshPattern) {
+      const pattern = new RegExp(entry.hiddenMeshPattern);
+      for (const root of result.rootNodes) {
+        const descendants = root.getDescendants(
+          false,
+          (node) => node instanceof AbstractMesh
+        ) as AbstractMesh[];
+        for (const mesh of descendants) {
+          if (pattern.test(mesh.name)) {
+            mesh.dispose();
+          }
+        }
+      }
     }
 
     return {

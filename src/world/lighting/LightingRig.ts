@@ -19,6 +19,7 @@ export class LightingRig {
   private skyDome: Mesh | null = null;
   private skyMaterial: StandardMaterial | null = null;
   private skyTexture: Texture | null = null;
+  private brightness = 1;
 
   constructor(private readonly scene: Scene) {}
 
@@ -69,6 +70,15 @@ export class LightingRig {
 
   addShadowCaster(mesh: AbstractMesh): void {
     this.shadowGenerator?.addShadowCaster(mesh);
+  }
+
+  /** 0..1 overall scene brightness multiplier. */
+  setBrightness(factor: number): void {
+    this.brightness = Math.min(1, Math.max(0, factor));
+    if (!this.ambient || !this.directional) return;
+    const cfg = WORLD_VISUAL_CONFIG;
+    this.ambient.intensity = cfg.ambientIntensity * this.brightness;
+    this.directional.intensity = cfg.directionalIntensity * this.brightness;
   }
 
   dispose(): void {

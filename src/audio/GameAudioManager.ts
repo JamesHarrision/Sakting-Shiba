@@ -11,6 +11,11 @@ export class GameAudioManager {
   private musicSource?: AudioBufferSourceNode;
   private muted = false;
   private paused = true;
+  /** 0..1 settings-slider values; scaled by the base gain below. */
+  private musicVolume = 1;
+  private sfxVolume = 1;
+  private static readonly MUSIC_BASE_GAIN = 0.16;
+  private static readonly SFX_BASE_GAIN = 0.3;
   private readonly unsubscribe: Array<() => void> = [];
 
   constructor(eventBus: GameEventBus) {
@@ -41,7 +46,33 @@ export class GameAudioManager {
   setPaused(paused: boolean): void {
     this.paused = paused;
     if (!this.context || !this.musicGain) return;
-    this.musicGain.gain.setTargetAtTime(paused ? 0 : 0.16, this.context.currentTime, 0.12);
+    this.musicGain.gain.setTargetAtTime(
+      paused ? 0 : this.musicVolume * GameAudioManager.MUSIC_BASE_GAIN,
+      this.context.currentTime,
+      0.12
+    );
+  }
+
+  /** 0..1 background-music volume (kept independent of mute). */
+  setMusicVolume(volume: number): void {
+    this.musicVolume = Math.min(1, Math.max(0, volume));
+    if (!this.context || !this.musicGain) return;
+    this.musicGain.gain.setTargetAtTime(
+      this.paused ? 0 : this.musicVolume * GameAudioManager.MUSIC_BASE_GAIN,
+      this.context.currentTime,
+      0.06
+    );
+  }
+
+  /** 0..1 SFX volume (kept independent of mute). */
+  setSfxVolume(volume: number): void {
+    this.sfxVolume = Math.min(1, Math.max(0, volume));
+    if (!this.context || !this.sfxGain) return;
+    this.sfxGain.gain.setTargetAtTime(
+      this.sfxVolume * GameAudioManager.SFX_BASE_GAIN,
+      this.context.currentTime,
+      0.06
+    );
   }
 
   dispose(): void {
@@ -60,8 +91,9 @@ export class GameAudioManager {
     this.musicGain = this.context.createGain();
     this.sfxGain = this.context.createGain();
     this.master.gain.value = this.muted ? 0 : 0.78;
-    this.musicGain.gain.value = this.paused ? 0 : 0.14;
-    this.sfxGain.gain.value = 0.32;
+    this.musicGain.gain.value =
+      this.paused ? 0 : this.musicVolume * GameAudioManager.MUSIC_BASE_GAIN;
+    this.sfxGain.gain.value = this.sfxVolume * GameAudioManager.SFX_BASE_GAIN;
     this.musicGain.connect(this.master);
     this.sfxGain.connect(this.master);
     this.master.connect(this.context.destination);

@@ -46,6 +46,8 @@ export interface PropAssetEntry {
   readonly mergeMeshes?: boolean;
   /** Extra distance from the road center, applied away from the lane area. */
   readonly lateralOffset?: number;
+  /** Regex over mesh names; matching cloned meshes are hidden (e.g. cone base). */
+  readonly hiddenMeshPattern?: string;
   /** Applied to the GLB instance; unused for procedural builders. */
   readonly calibration: PropCalibration;
 }
@@ -111,6 +113,8 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
     kind: "cone",
     assetPath: `${PROPS_ASSET_DIR}/cone.glb`,
     useAsset: true,
+    // Hide the grey square base plate (Cylinder_Base mesh) that cones sit on
+    hiddenMeshPattern: "Cylinder_Base",
     calibration: {
       position: { x: 0, y: 0.013, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },

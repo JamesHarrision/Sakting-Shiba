@@ -19,15 +19,16 @@ describe("PlayerProfileStore", () => {
     const storage = new MemoryStorage();
     const first = new PlayerProfileStore(storage);
     first.addCoins(200);
-    expect(first.purchase("cat.calico", 120)).toBe(true);
-    expect(first.equip("cat", "cat.calico")).toBe(true);
+    expect(first.purchase("dog.calico", 120)).toBe(true);
+    expect(first.equip("dog", "dog.calico")).toBe(true);
     first.completeTutorial();
     expect(first.recordRun(425, 182.7).isNewBestScore).toBe(true);
 
     const restored = new PlayerProfileStore(storage).getSnapshot();
     expect(restored.coins).toBe(80);
-    expect(restored.ownedCosmetics).toContain("cat.calico");
-    expect(restored.equippedCat).toBe("cat.calico");
+    expect(restored.ownedCosmetics).toContain("dog.calico");
+    expect(restored.equippedDog).toBe("dog.calico");
+    expect(restored.equippedHat).toBe("hat.default");
     expect(restored.tutorialCompleted).toBe(true);
     expect(restored.bestScore).toBe(425);
     expect(restored.bestDistance).toBe(182.7);
@@ -36,12 +37,12 @@ describe("PlayerProfileStore", () => {
 
   it("rejects unaffordable, duplicate and unowned actions", () => {
     const store = new PlayerProfileStore(new MemoryStorage());
-    expect(store.purchase("board.neon", 1)).toBe(false);
+    expect(store.purchase("board.mint", 1)).toBe(false);
     store.addCoins(10);
-    expect(store.purchase("board.neon", 10)).toBe(true);
-    expect(store.purchase("board.neon", 10)).toBe(false);
+    expect(store.purchase("board.mint", 10)).toBe(true);
+    expect(store.purchase("board.mint", 10)).toBe(false);
     expect(store.equip("board", "board.unknown")).toBe(false);
-    expect(store.equip("board", "board.neon")).toBe(true);
+    expect(store.equip("board", "board.mint")).toBe(true);
   });
 
   it("keeps personal records while counting every completed run", () => {

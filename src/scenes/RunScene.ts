@@ -138,8 +138,13 @@ export class RunScene {
     return this.worldController.trackManager;
   }
 
-  applyCosmetics(catColor: string, boardColor: string): void {
-    this.playerVisual.applyCosmetics(catColor, boardColor);
+  applyCosmetics(dogColor: string, boardColor: string): void {
+    this.playerVisual.applyCosmetics(dogColor, boardColor);
+  }
+
+  /** 0..1 scene brightness (settings slider). */
+  setBrightness(factor: number): void {
+    this.worldController.lighting.setBrightness(factor);
   }
 
   addCameraImpact(amount: number): void {

@@ -1,9 +1,10 @@
-export type CosmeticCategory = "cat" | "board";
+export type CosmeticCategory = "hat" | "dog" | "board";
 
 export interface PlayerProfile {
   readonly coins: number;
   readonly ownedCosmetics: readonly string[];
-  readonly equippedCat: string;
+  readonly equippedHat: string;
+  readonly equippedDog: string;
   readonly equippedBoard: string;
   readonly tutorialCompleted: boolean;
   readonly bestScore: number;
@@ -24,8 +25,9 @@ interface StoragePort {
 const STORAGE_KEY = "catboard-rush.profile.v1";
 const DEFAULT_PROFILE: PlayerProfile = Object.freeze({
   coins: 0,
-  ownedCosmetics: Object.freeze(["cat.default", "board.default"]),
-  equippedCat: "cat.default",
+  ownedCosmetics: Object.freeze(["hat.default", "dog.default", "board.default"]),
+  equippedHat: "hat.default",
+  equippedDog: "dog.default",
   equippedBoard: "board.default",
   tutorialCompleted: false,
   bestScore: 0,
@@ -70,9 +72,9 @@ export class PlayerProfileStore {
 
   equip(category: CosmeticCategory, id: string): boolean {
     if (!this.profile.ownedCosmetics.includes(id)) return false;
-    this.update(
-      category === "cat" ? { equippedCat: id } : { equippedBoard: id }
-    );
+    if (category === "hat") this.update({ equippedHat: id });
+    else if (category === "dog") this.update({ equippedDog: id });
+    else this.update({ equippedBoard: id });
     return true;
   }
 
@@ -108,12 +110,18 @@ export class PlayerProfileStore {
         coins: Math.max(0, Math.floor(value.coins ?? 0)),
         ownedCosmetics: Object.freeze([
           ...new Set([
-            "cat.default",
+            "hat.default",
+            "dog.default",
             "board.default",
             ...(value.ownedCosmetics ?? [])
           ])
         ]),
-        equippedCat: value.equippedCat ?? "cat.default",
+        // Legacy saves used equippedCat — treat it as the dog slot
+        equippedHat: value.equippedHat ?? "hat.default",
+        equippedDog:
+          value.equippedDog ??
+          (value as Partial<PlayerProfile> & { equippedCat?: string }).equippedCat ??
+          "dog.default",
         equippedBoard: value.equippedBoard ?? "board.default",
         tutorialCompleted: value.tutorialCompleted ?? false,
         bestScore: Math.max(0, Math.floor(value.bestScore ?? 0)),

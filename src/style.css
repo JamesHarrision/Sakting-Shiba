@@ -173,7 +173,12 @@ button:focus-visible {
 }
 
 .menu-screen {
-  justify-self: start;
+  justify-self: center;
+  text-align: center;
+}
+
+.menu-screen .menu-actions {
+  justify-content: center;
 }
 
 .game-kicker {
@@ -263,6 +268,7 @@ button:focus-visible {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 12px;
   margin-top: 34px;
 }
@@ -627,6 +633,135 @@ button:focus-visible {
 
 .store-close {
   margin-top: 16px;
+}
+
+/* Store: arrowed category rows */
+.store-rows {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.store-row {
+  display: grid;
+  grid-template-columns: 96px 44px 1fr 44px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(17, 20, 25, 0.86);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+  transition: box-shadow 300ms var(--motion), background-color 300ms var(--motion);
+}
+
+.store-row.is-active {
+  background: rgba(27, 31, 37, 0.94);
+  box-shadow: inset 0 0 0 2px var(--yellow);
+}
+
+.store-row-label {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.store-arrow {
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(12, 15, 19, 0.72);
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 200ms var(--motion), color 200ms var(--motion);
+}
+
+.store-arrow:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.store-row-display {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.store-row-display::before {
+  width: 62px;
+  height: 62px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--swatch), var(--accent));
+  content: "";
+}
+
+.store-row-display p {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.store-row-display span {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.store-row-display span.is-equipped {
+  color: var(--mint);
+}
+
+.store-buy {
+  width: 100%;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.store-buy:disabled {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--mint);
+  cursor: default;
+  transform: none;
+}
+
+/* Settings screen */
+.settings-screen {
+  width: min(520px, 100%);
+  animation: panel-in 700ms var(--motion) both;
+}
+
+.settings-screen h2 {
+  margin: 0;
+  font-size: clamp(30px, 5vw, 56px);
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+.setting-row {
+  display: grid;
+  grid-template-columns: 1fr auto 44px;
+  align-items: center;
+  gap: 16px;
+  margin-top: 22px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: rgba(17, 20, 25, 0.86);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.setting-row strong {
+  color: var(--yellow);
+  font-size: 13px;
+  text-align: right;
+}
+
+.setting-row input[type="range"] {
+  width: 100%;
+  accent-color: var(--coral);
+  cursor: pointer;
 }
 
 .touch-controls {
