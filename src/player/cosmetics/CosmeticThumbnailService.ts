@@ -4,6 +4,7 @@ import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
 import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
 import { Color4 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { ensureGltfLoader } from "../../assets/registerGltfLoader";
 import {
@@ -56,6 +57,30 @@ export class CosmeticThumbnailService {
             scene
           );
           container.addAllToScene();
+
+          // Fit the model into the camera view: scale to ~1.4 units tall and
+          // center it at the origin so the thumbnail frames the asset.
+          const meshes = container.meshes.filter((m) => m.isVisible);
+          const bounds = computeBounds(meshes);
+          const span = Math.max(
+            bounds.max.y - bounds.min.y,
+            bounds.max.x - bounds.min.x,
+            bounds.max.z - bounds.min.z
+          );
+          const scale = span > 0 ? 1.4 / span : 1;
+          const midX = (bounds.min.x + bounds.max.x) / 2;
+          const midY = (bounds.min.y + bounds.max.y) / 2;
+          const midZ = (bounds.min.z + bounds.max.z) / 2;
+          for (const mesh of meshes) {
+            mesh.scaling.setAll(scale);
+            mesh.position.set(
+              mesh.position.x - midX * scale,
+              mesh.position.y - midY * scale,
+              mesh.position.z - midZ * scale
+            );
+          }
+
+          scene.render();
           const dataUrl = canvas.toDataURL("image/png");
           this.thumbnails.set(item.id, dataUrl);
           container.removeAllFromScene();
@@ -87,4 +112,22 @@ function resolveModelUrl(path: string | null): string | undefined {
   if (!path) return undefined;
   if (path.startsWith("/src/")) return SRC_MODEL_URLS[path];
   return path;
+}
+
+function computeBounds(meshes: readonly AbstractMesh[]): { min: Vector3; max: Vector3 } {
+  const min = new Vector3(Infinity, Infinity, Infinity);
+  const max = new Vector3(-Infinity, -Infinity, -Infinity);
+  for (const mesh of meshes) {
+    mesh.computeWorldMatrix(true);
+    const box = mesh.getBoundingInfo().boundingBox;
+    const lo = box.minimumWorld;
+    const hi = box.maximumWorld;
+    min.x = Math.min(min.x, lo.x);
+    min.y = Math.min(min.y, lo.y);
+    min.z = Math.min(min.z, lo.z);
+    max.x = Math.max(max.x, hi.x);
+    max.y = Math.max(max.y, hi.y);
+    max.z = Math.max(max.z, hi.z);
+  }
+  return { min, max };
 }

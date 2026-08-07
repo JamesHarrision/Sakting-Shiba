@@ -6,22 +6,31 @@ export const MUSIC_LOOP_SECONDS = 20;
 /**
  * Real audio files (drop in src/assets/audio/). Vite's import.meta.glob only
  * contains files that exist, so a missing sound silently keeps the procedural
- * fallback with zero console noise.
+ * fallback with zero console noise. Files may be .ogg/.mp3/.m4a — the browser
+ * decodes by content, not by extension.
  */
-const AUDIO_URLS = import.meta.glob("/src/assets/audio/**/*.ogg", {
+const AUDIO_URLS = import.meta.glob("/src/assets/audio/**/*.{ogg,mp3,m4a}", {
   query: "?url",
   import: "default",
   eager: true
 }) as Record<string, string>;
 
-const MUSIC_URL = AUDIO_URLS["/src/assets/audio/music.ogg"];
+const MUSIC_URL = findAudio(AUDIO_URLS, "music");
 const SFX_URLS: Readonly<Partial<Record<SfxName, string>>> = Object.freeze({
-  jump: AUDIO_URLS["/src/assets/audio/sfx/jump.ogg"],
-  coin: AUDIO_URLS["/src/assets/audio/sfx/coin.ogg"],
-  hit: AUDIO_URLS["/src/assets/audio/sfx/hurt.ogg"],
-  power: AUDIO_URLS["/src/assets/audio/sfx/power.ogg"]
+  jump: findAudio(AUDIO_URLS, "jump"),
+  coin: findAudio(AUDIO_URLS, "coin"),
+  hit: findAudio(AUDIO_URLS, "hurt") ?? findAudio(AUDIO_URLS, "hit"),
+  power: findAudio(AUDIO_URLS, "power")
   // land: no file provided -> procedural blip
 });
+
+function findAudio(urls: Record<string, string>, baseName: string): string | undefined {
+  const key = Object.keys(urls).find((k) => {
+    const file = k.slice(k.lastIndexOf("/") + 1).toLowerCase();
+    return file.startsWith(baseName);
+  });
+  return key ? urls[key] : undefined;
+}
 
 export class GameAudioManager {
   private context?: AudioContext;
@@ -29,6 +38,7 @@ export class GameAudioManager {
   private musicGain?: GainNode;
   private sfxGain?: GainNode;
   private musicSource?: AudioBufferSourceNode;
+  private hasRealMusic = false;
   private readonly sfxBuffers = new Map<SfxName, AudioBuffer>();
   private muted = false;
   private paused = true;
@@ -54,8 +64,19 @@ export class GameAudioManager {
   }
 
   async unlock(): Promise<void> {
-    if (!this.context) await this.initialize();
-    if (this.context?.state === "suspended") await this.context.resume();
+    if (!this.context) {
+      await this.initialize();
+    }
+    // Resume must happen before decodeAudioData in some browsers (Safari)
+    if (this.context?.state === "suspended") {
+      await this.context.resume();
+    }
+    // Audio was decoded while the context was suspended on some engines;
+    // decode again post-resume when the first attempt produced no music.
+    if (this.context && !this.hasRealMusic && MUSIC_URL) {
+      const buffer = await loadAudioBuffer(this.context, MUSIC_URL);
+      if (buffer) this.startBufferLoop(buffer);
+    }
   }
 
   setMuted(muted: boolean): void {
@@ -105,33 +126,40 @@ export class GameAudioManager {
   }
 
   private async initialize(): Promise<void> {
-    const AudioContextCtor = window.AudioContext;
-    if (!AudioContextCtor) return;
-    this.context = new AudioContextCtor();
-    this.master = this.context.createGain();
-    this.musicGain = this.context.createGain();
-    this.sfxGain = this.context.createGain();
-    this.master.gain.value = this.muted ? 0 : 0.78;
-    this.musicGain.gain.value =
-      this.paused ? 0 : this.musicVolume * GameAudioManager.MUSIC_BASE_GAIN;
-    this.sfxGain.gain.value = this.sfxVolume * GameAudioManager.SFX_BASE_GAIN;
-    this.musicGain.connect(this.master);
-    this.sfxGain.connect(this.master);
-    this.master.connect(this.context.destination);
+    try {
+      const AudioContextCtor =
+        window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextCtor) return;
+      this.context = new AudioContextCtor();
+      this.master = this.context.createGain();
+      this.musicGain = this.context.createGain();
+      this.sfxGain = this.context.createGain();
+      this.master.gain.value = this.muted ? 0 : 0.78;
+      this.musicGain.gain.value =
+        this.paused ? 0 : this.musicVolume * GameAudioManager.MUSIC_BASE_GAIN;
+      this.sfxGain.gain.value = this.sfxVolume * GameAudioManager.SFX_BASE_GAIN;
+      this.musicGain.connect(this.master);
+      this.sfxGain.connect(this.master);
+      this.master.connect(this.context.destination);
 
-    // Prefer the real music loop; fall back to the procedural loop when absent.
-    const musicBuffer = await loadAudioBuffer(this.context, MUSIC_URL);
-    if (musicBuffer) {
-      this.startBufferLoop(musicBuffer);
-    } else {
+      // Prefer the real music loop; fall back to the procedural loop when absent.
+      const musicBuffer = await loadAudioBuffer(this.context, MUSIC_URL);
+      if (musicBuffer) {
+        this.startBufferLoop(musicBuffer);
+        this.hasRealMusic = true;
+      } else {
+        this.startProceduralMusic();
+      }
+
+      // Warm up real SFX buffers; absent files keep the procedural fallback.
+      for (const [name, url] of Object.entries(SFX_URLS) as Array<[SfxName, string | undefined]>) {
+        if (!url) continue;
+        const buffer = await loadAudioBuffer(this.context, url);
+        if (buffer) this.sfxBuffers.set(name, buffer);
+      }
+    } catch {
+      // Never let audio break the game; fall back to the procedural loop.
       this.startProceduralMusic();
-    }
-
-    // Warm up real SFX buffers; absent files keep the procedural fallback.
-    for (const [name, url] of Object.entries(SFX_URLS) as Array<[SfxName, string | undefined]>) {
-      if (!url) continue;
-      const buffer = await loadAudioBuffer(this.context, url);
-      if (buffer) this.sfxBuffers.set(name, buffer);
     }
   }
 

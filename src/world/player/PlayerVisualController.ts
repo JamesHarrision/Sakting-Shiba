@@ -98,7 +98,7 @@ export class PlayerVisualController {
     }
 
     this.playerRig.setVisualLoadState("loading");
-    this.modelLoadPromise = this.modelView.loadAssets().then(async (fullyLoaded) => {
+    this.modelLoadPromise = this.modelView.loadAssets().then((fullyLoaded) => {
       if (this.disposed) return;
       this.catLoaded = this.modelView.catLoaded;
       this.boardLoaded = this.modelView.boardLoaded;
@@ -112,17 +112,21 @@ export class PlayerVisualController {
         this.player.setEnabled(true);
         this.playerRig.setVisualLoadState("fallback");
       }
-      await this.cosmeticLayer.preloadAll();
-      if (!fullyLoaded) {
-        this.cosmeticLayer.setAllEnabled(false);
-      }
-      this.applyCosmetics(
-        this.dogId,
-        this.boardId,
-        this.hatId,
-        this.catColor,
-        this.boardColor
-      );
+      // Cosmetic models load in the background; apply them when ready so the
+      // loading screen never waits on large downloads.
+      void this.cosmeticLayer.preloadAll().then(() => {
+        if (this.disposed) return;
+        if (!fullyLoaded) {
+          this.cosmeticLayer.setAllEnabled(false);
+        }
+        this.applyCosmetics(
+          this.dogId,
+          this.boardId,
+          this.hatId,
+          this.catColor,
+          this.boardColor
+        );
+      });
     });
 
     return this.modelLoadPromise;

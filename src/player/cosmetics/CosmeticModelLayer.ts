@@ -220,3 +220,12 @@ function computeWorldBounds(
   }
   return { min, max };
 }
+
+/** Removes any half-instantiated cosmetic meshes after a failed clone. */
+function rootCleanup(scene: Scene, itemId: string): void {
+  for (const mesh of scene.meshes) {
+    if (mesh.name.startsWith(`cosm-${itemId}-`)) {
+      mesh.dispose();
+    }
+  }
+}
