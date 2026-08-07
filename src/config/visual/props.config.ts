@@ -111,10 +111,12 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
     kind: "cone",
     assetPath: `${PROPS_ASSET_DIR}/cone.glb`,
     useAsset: true,
+    // cone.glb is a Z-up Sketchfab asset (axis along Z): rotate -90 to stand,
+    // square grey base plate sits on the ground, orange body points up.
     calibration: {
-      position: { x: 0, y: 0.013, z: 0 },
-      rotationDegrees: { x: 0, y: 0, z: 0 },
-      scale: 0.005,
+      position: { x: 0, y: 0.01, z: 0 },
+      rotationDegrees: { x: -90, y: 0, z: 0 },
+      scale: 0.22,
     },
   },
   {
