@@ -46,6 +46,11 @@ export class CosmeticModelLayer {
   private readonly hatMount: TransformNode;
   private loaded = false;
 
+  /** The dogMount sits catFootOffset above the board deck; dogs must come down. */
+  private static readonly DOG_FOOT_OFFSET = 0.657;
+  /** Hat mount sits just above the dog's head (head is ~1.42 above dog feet). */
+  private static readonly HAT_HEAD_Y = 1.42;
+
   constructor(
     private readonly scene: Scene,
     private readonly dogMount: TransformNode,
@@ -53,7 +58,7 @@ export class CosmeticModelLayer {
   ) {
     this.hatMount = new TransformNode("cosmetic-hat-mount", this.scene);
     this.hatMount.parent = dogMount;
-    this.hatMount.position.set(0, 1.5, 0);
+    this.hatMount.position.set(0, CosmeticModelLayer.HAT_HEAD_Y, 0);
   }
 
   async preloadAll(): Promise<void> {
@@ -166,7 +171,37 @@ export class CosmeticModelLayer {
   }
 
   private instantiateDog(item: CosmeticItem): void {
-    this.instantiateNonDefault(item, this.dogMount, "dog");
+    const container = this.containers.get(item.id);
+    if (!container || this.instances.has(item.id)) return;
+
+    try {
+      const root = new TransformNode(`cosmetic-${item.id}`, this.scene);
+      root.parent = this.dogMount;
+      // Normalized models have feet at their local Y=0.
+      // The dogMount is catFootOffset above the deck, so offset down.
+      root.position.set(0, -CosmeticModelLayer.DOG_FOOT_OFFSET, 0);
+      root.rotation.set(0, 0, 0);
+      root.scaling.setAll(1);
+
+      const result = container.instantiateModelsToScene(
+        (n) => `cosm-${item.id}-${n}`
+      );
+      for (const importedRoot of result.rootNodes) {
+        importedRoot.parent = root;
+      }
+      const meshes = root.getDescendants(
+        false,
+        (node) => node instanceof AbstractMesh
+      ) as AbstractMesh[];
+
+      this.instances.set(item.id, {
+        root,
+        meshes,
+        dispose: () => root.dispose()
+      });
+    } catch {
+      rootCleanup(this.scene, item.id);
+    }
   }
 
   private instantiateBoard(item: CosmeticItem): void {

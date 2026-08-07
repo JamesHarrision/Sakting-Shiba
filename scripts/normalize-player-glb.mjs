@@ -128,6 +128,14 @@ for (const entry of KEYS) {
     t[1] = -bbox.min[1] * sy;
     t[0] = -center[0] * sy;
     t[2] = -center[2] * sy;
+
+    // Face -Z (track forward): if the model's tallest horizontal axis is X,
+    // rotate 90° around Y so Z becomes the dominant depth axis.
+    if (span[0] > span[2] * 1.15) {
+      rotateY90 = true;
+      r[1] = Math.sin(Math.PI / 4);
+      r[3] = Math.cos(Math.PI / 4);
+    }
   } else {
     const sc = maxHoriz > 0 ? (entry.targetLength || 2.28) / maxHoriz : 1;
     s[0] = sc; s[1] = sc; s[2] = sc;
