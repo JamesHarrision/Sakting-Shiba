@@ -11,6 +11,9 @@ import {
   type CosmeticItem
 } from "../../config/visual/cosmeticsConfig";
 
+/** catFootOffset from the default player config: board deck -> mounting point. */
+const CAT_FOOT_OFFSET = 0.657;
+
 /** Hashed URLs of the cosmetic models under src/assets (built from glob). */
 const SRC_MODEL_URLS = import.meta.glob("/src/assets/models/player/*.glb", {
   query: "?url",
@@ -20,7 +23,7 @@ const SRC_MODEL_URLS = import.meta.glob("/src/assets/models/player/*.glb", {
 
 function resolveModelUrl(path: string): string | undefined {
   if (path.startsWith("/src/")) return SRC_MODEL_URLS[path];
-  return path; // public folder URL
+  return path;
 }
 
 interface CosmeticInstance {
@@ -37,9 +40,9 @@ export interface CosmeticEquipResult {
 
 /**
  * Loads the real cosmetic GLBs (hats, dogs, boards) and swaps the equipped one
- * into the player rig. Every model is auto-calibrated from its world bbox to a
- * fit target (height for dogs/hats, length along Z for boards), so any
- * downloaded model lands at the right size and stands on the ground.
+ * into the player rig. Every model is auto-scaled to its fit target and
+ * positioned so the dog's feet rest on the board deck, the board runs along
+ * the track (Z), and the hat sits on the dog's head.
  */
 export class CosmeticModelLayer {
   private readonly containers = new Map<string, AssetContainer>();
@@ -52,13 +55,11 @@ export class CosmeticModelLayer {
     private readonly dogMount: TransformNode,
     private readonly boardMount: TransformNode
   ) {
-    // Sits on top of the dog's head; child of catMount so crouch squash applies
     this.hatMount = new TransformNode("cosmetic-hat-mount", this.scene);
     this.hatMount.parent = dogMount;
     this.hatMount.position.set(0, 1.5, 0);
   }
 
-  /** Loads every cosmetic model with a GLB (silently skips missing files). */
   async preloadAll(): Promise<void> {
     if (this.loaded) return;
     await ensureGltfLoader();
@@ -72,26 +73,23 @@ export class CosmeticModelLayer {
     return this.loaded;
   }
 
-  /** Hides every cosmetic instance (used while the procedural fallback shows). */
   setAllEnabled(enabled: boolean): void {
     for (const instance of this.instances.values()) {
       instance.root.setEnabled(enabled);
     }
   }
 
-  /** Shows the equipped non-default cosmetics, hides the rest. */
   applyEquipped(dogId: string, boardId: string, hatId: string): CosmeticEquipResult {
     const dogItem = getItem("dog", dogId);
     const boardItem = getItem("board", boardId);
     const hatItem = getItem("hat", hatId);
 
-    for (const [id, instance] of this.instances) {
+    for (const instance of this.instances.values()) {
       instance.root.setEnabled(false);
-      void id;
     }
-    this.instantiateIfNeeded(dogItem, this.dogMount);
-    this.instantiateIfNeeded(boardItem, this.boardMount);
-    this.instantiateIfNeeded(hatItem, this.hatMount);
+    this.instantiateIfNeeded(dogItem, this.dogMount, "dog");
+    this.instantiateIfNeeded(boardItem, this.boardMount, "board");
+    this.instantiateIfNeeded(hatItem, this.hatMount, "hat");
 
     this.instances.get(dogItem.id)?.root.setEnabled(true);
     this.instances.get(boardItem.id)?.root.setEnabled(true);
@@ -131,81 +129,127 @@ export class CosmeticModelLayer {
     }
   }
 
-  private instantiateIfNeeded(item: CosmeticItem, parent: TransformNode): void {
+  private instantiateIfNeeded(
+    item: CosmeticItem,
+    parent: TransformNode,
+    kind: "dog" | "board" | "hat"
+  ): void {
     if (this.instances.has(item.id)) return;
     const container = this.containers.get(item.id);
     if (!container) return;
 
-    const root = new TransformNode(`cosmetic-${item.id}`, this.scene);
-    root.parent = parent;
+    try {
+      const root = new TransformNode(`cosmetic-${item.id}`, this.scene);
+      root.parent = parent;
 
-    const result = container.instantiateModelsToScene((name) => `cosm-${item.id}-${name}`);
-    for (const importedRoot of result.rootNodes) {
-      importedRoot.parent = root;
+      const result = container.instantiateModelsToScene(
+        (name) => `cosm-${item.id}-${name}`
+      );
+      for (const importedRoot of result.rootNodes) {
+        importedRoot.parent = root;
+      }
+      const meshes = root.getDescendants(
+        false,
+        (node) => node instanceof AbstractMesh
+      ) as AbstractMesh[];
+
+      this.fitToTarget(root, meshes, item.fit, kind);
+      this.instances.set(item.id, {
+        root,
+        meshes,
+        dispose: () => root.dispose()
+      });
+    } catch {
+      rootCleanup(this.scene, item.id);
     }
-    const meshes = root.getDescendants(
-      false,
-      (node) => node instanceof AbstractMesh
-    ) as AbstractMesh[];
-
-    this.fitToTarget(root, meshes, item.fit);
-
-    this.instances.set(item.id, {
-      root,
-      meshes,
-      dispose: () => root.dispose()
-    });
   }
 
   /**
-   * Two-pass fit from the world bbox: scale to the target, rotate boards so
-   * their length runs along Z, then recenter and ground them.
+   * Auto-scale from the world bbox, then apply a kind-specific offset so
+   * the model is correctly positioned on the rig:
+   *  - dogs: feet rest on the board deck (catMount is ~0.66 above deck)
+   *  - boards: length along Z, centered under the dog
+   *  - hats: sit on the dog's head
    */
   private fitToTarget(
     root: TransformNode,
     meshes: readonly AbstractMesh[],
-    fit: CosmeticFit
+    fit: CosmeticFit,
+    kind: "dog" | "board" | "hat"
   ): void {
-    if (!meshes.length || (!fit.height && !fit.width)) return;
+    if (!meshes.length) return;
 
+    // Scale to target height/width
     root.scaling.setAll(1);
     root.position.set(0, 0, 0);
     root.rotation.set(0, 0, 0);
 
-    let bounds = computeWorldBounds(meshes);
+    const bounds = computeWorldBounds(meshes);
     const spanX = bounds.max.x - bounds.min.x;
     const spanY = bounds.max.y - bounds.min.y;
     const spanZ = bounds.max.z - bounds.min.z;
-    const scale = fit.height
-      ? fit.height / spanY
-      : fit.width
-        ? fit.width / Math.max(spanX, spanZ)
-        : 1;
-    root.scaling.setAll(scale);
+    const targetHeight = fit.height;
+    const targetWidth = fit.width;
+
+    if (targetHeight && spanY > 0) {
+      root.scaling.setAll(targetHeight / spanY);
+    } else if (targetWidth && spanX > 0 && spanZ > 0) {
+      root.scaling.setAll(targetWidth / Math.max(spanX, spanZ));
+    }
 
     // Boards: align the longest horizontal axis to the track direction (Z)
-    if (fit.width && !fit.height && spanX > spanZ) {
+    if (kind === "board" && spanX > spanZ) {
       root.rotation.y = Math.PI / 2;
     }
 
-    bounds = computeWorldBounds(meshes);
-    root.position.x = -(bounds.min.x + bounds.max.x) / 2;
-    root.position.z = -(bounds.min.z + bounds.max.z) / 2;
-    root.position.y = -bounds.min.y;
+    // Re-compute bounds after scaling + rotation
+    const fitted = computeWorldBounds(meshes);
+
+    // Center horizontally
+    root.position.x = -(fitted.min.x + fitted.max.x) / 2;
+    root.position.z = -(fitted.min.z + fitted.max.z) / 2;
+
+    // Vertical positioning depends on model kind
+    if (kind === "dog") {
+      // Dog feet at the board deck. The dogMount (catMount) is
+      // catFootOffset above the board, so offset the model down.
+      root.position.y = -fitted.min.y - CAT_FOOT_OFFSET;
+    } else if (kind === "hat") {
+      // Hat sits at the mount point (top of head)
+      root.position.y = -fitted.min.y;
+    } else {
+      // Board: center vertically
+      root.position.y = -(fitted.min.y + fitted.max.y) / 2;
+    }
   }
 }
 
-function getItem(category: "hat" | "dog" | "board", id: string): CosmeticItem {
-  return COSMETICS.find((item) => item.category === category && item.id === id)
-    ?? COSMETICS.find((item) => item.category === category && item.id.endsWith(".default"))
-    ?? COSMETICS[0];
+function getItem(
+  category: "hat" | "dog" | "board",
+  id: string
+): CosmeticItem {
+  return (
+    COSMETICS.find((item) => item.category === category && item.id === id) ??
+    COSMETICS.find(
+      (item) => item.category === category && item.id.endsWith(".default")
+    ) ??
+    COSMETICS[0]
+  );
 }
 
 function computeWorldBounds(
   meshes: readonly AbstractMesh[]
 ): { min: Vector3; max: Vector3 } {
-  const min = new Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
-  const max = new Vector3(Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY);
+  const min = new Vector3(
+    Number.POSITIVE_INFINITY,
+    Number.POSITIVE_INFINITY,
+    Number.POSITIVE_INFINITY
+  );
+  const max = new Vector3(
+    Number.NEGATIVE_INFINITY,
+    Number.NEGATIVE_INFINITY,
+    Number.NEGATIVE_INFINITY
+  );
   for (const mesh of meshes) {
     mesh.computeWorldMatrix(true);
     const box = mesh.getBoundingInfo().boundingBox;
@@ -221,7 +265,6 @@ function computeWorldBounds(
   return { min, max };
 }
 
-/** Removes any half-instantiated cosmetic meshes after a failed clone. */
 function rootCleanup(scene: Scene, itemId: string): void {
   for (const mesh of scene.meshes) {
     if (mesh.name.startsWith(`cosm-${itemId}-`)) {

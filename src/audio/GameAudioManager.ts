@@ -45,7 +45,7 @@ export class GameAudioManager {
   /** 0..1 settings-slider values; scaled by the base gain below. */
   private musicVolume = 1;
   private sfxVolume = 1;
-  private static readonly MUSIC_BASE_GAIN = 0.16;
+  private static readonly MUSIC_BASE_GAIN = 0.28;
   private static readonly SFX_BASE_GAIN = 0.3;
   private readonly unsubscribe: Array<() => void> = [];
 

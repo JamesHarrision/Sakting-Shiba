@@ -2,8 +2,11 @@ import { Engine } from "@babylonjs/core/Engines/engine";
 import { Scene } from "@babylonjs/core/scene";
 import { ArcRotateCamera } from "@babylonjs/core/Cameras/arcRotateCamera";
 import { HemisphericLight } from "@babylonjs/core/Lights/hemisphericLight";
+import { DirectionalLight } from "@babylonjs/core/Lights/directionalLight";
 import { Color4 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
+import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import type { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import { ensureGltfLoader } from "../../assets/registerGltfLoader";
@@ -14,8 +17,8 @@ import {
 
 /**
  * Renders each cosmetic GLB once into an offscreen canvas and returns a small
- * PNG data URL, so the store can show real mini images instead of color
- * swatches. Items without a model keep the swatch fallback.
+ * PNG data URL. Uses a parent TransformNode for scaling/centering so the model
+ * always fits the frame, and waits for shaders to compile before capturing.
  */
 export class CosmeticThumbnailService {
   private readonly thumbnails = new Map<string, string>();
@@ -32,67 +35,78 @@ export class CosmeticThumbnailService {
     });
     const scene = new Scene(engine);
     scene.clearColor = new Color4(0.06, 0.09, 0.13, 1);
-    const light = new HemisphericLight("thumb-light", new Vector3(0, 1, 0), scene);
-    light.intensity = 0.8;
-    const target = new Vector3(0, 0.4, 0);
+
+    // Key light + subtle fill so no side of the model is fully black
+    new HemisphericLight("th-ambient", new Vector3(0, 1, 0), scene).intensity = 0.5;
+    const fill = new DirectionalLight("th-fill", new Vector3(-0.4, -0.3, 0.7), scene);
+    fill.intensity = 0.4;
+
+    const target = new Vector3(0, 0.3, 0);
     const camera = new ArcRotateCamera(
       "thumb-cam",
       Math.PI / 4,
-      Math.PI / 2.3,
-      3.4,
+      Math.PI / 2.4,
+      3.6,
       target,
       scene
     );
     camera.setTarget(target);
 
-    try {
-      await ensureGltfLoader();
-      for (const item of items) {
-        const url = resolveModelUrl(item.model);
-        if (!url) continue;
-        try {
-          const container = await SceneLoader.LoadAssetContainerAsync(
-            url,
-            undefined,
-            scene
-          );
-          container.addAllToScene();
+    // A neutral matte floor catches ambient light so the model isn't floating in void
+    const floor = MeshBuilder.CreateGround("th-floor", { width: 4, height: 4 }, scene);
+    floor.isVisible = false; // hide the floor but its reflection helps the eyes  
 
-          // Fit the model into the camera view: scale to ~1.4 units tall and
-          // center it at the origin so the thumbnail frames the asset.
-          const meshes = container.meshes.filter((m) => m.isVisible);
-          const bounds = computeBounds(meshes);
-          const span = Math.max(
-            bounds.max.y - bounds.min.y,
-            bounds.max.x - bounds.min.x,
-            bounds.max.z - bounds.min.z
-          );
-          const scale = span > 0 ? 1.4 / span : 1;
-          const midX = (bounds.min.x + bounds.max.x) / 2;
-          const midY = (bounds.min.y + bounds.max.y) / 2;
-          const midZ = (bounds.min.z + bounds.max.z) / 2;
-          for (const mesh of meshes) {
-            mesh.scaling.setAll(scale);
-            mesh.position.set(
-              mesh.position.x - midX * scale,
-              mesh.position.y - midY * scale,
-              mesh.position.z - midZ * scale
-            );
-          }
+    await ensureGltfLoader();
 
-          scene.render();
-          const dataUrl = canvas.toDataURL("image/png");
-          this.thumbnails.set(item.id, dataUrl);
-          container.removeAllFromScene();
-          container.dispose();
-        } catch {
-          // Broken model -> keep swatch fallback
+    for (const item of items) {
+      const url = resolveModelUrl(item.model);
+      if (!url) continue;
+      try {
+        const container = await SceneLoader.LoadAssetContainerAsync(
+          url,
+          undefined,
+          scene
+        );
+
+        // Wrap everything under a calibrating root so we scale+center the
+        // whole hierarchy without having to mutate individual mesh positions.
+        const root = new TransformNode(`thumb-root-${item.id}`, scene);
+        container.addAllToScene();
+        const visibleMeshes = container.meshes.filter((m) => m.isVisible);
+        for (const mesh of visibleMeshes) {
+          mesh.parent = root;
         }
+
+        // Compute raw bounding box, then scale + center
+        root.scaling.setAll(1);
+        root.position.set(0, 0, 0);
+        const bounds = computeBounds(visibleMeshes);
+        const span = Math.max(
+          bounds.max.y - bounds.min.y,
+          bounds.max.x - bounds.min.x,
+          bounds.max.z - bounds.min.z
+        );
+        const scale = span > 0 ? 1.5 / span : 1;
+        root.scaling.setAll(scale);
+        root.position.x = -(bounds.min.x + bounds.max.x) / 2 * scale;
+        root.position.y = -(bounds.min.y + bounds.max.y) / 2 * scale;
+        root.position.z = -(bounds.min.z + bounds.max.z) / 2 * scale;
+
+        // Wait until shaders + textures are compiled on the GPU
+        await scene.whenReadyAsync();
+        scene.render();
+
+        const dataUrl = canvas.toDataURL("image/png");
+        this.thumbnails.set(item.id, dataUrl);
+
+        root.dispose();
+        container.dispose();
+      } catch {
+        // Broken model -> keep swatch fallback
       }
-    } finally {
-      engine.dispose();
     }
 
+    engine.dispose();
     return Object.fromEntries(this.thumbnails);
   }
 
@@ -101,7 +115,6 @@ export class CosmeticThumbnailService {
   }
 }
 
-// Reuse the same glob resolution as the in-game layer
 const SRC_MODEL_URLS = import.meta.glob("/src/assets/models/player/*.glb", {
   query: "?url",
   import: "default",
@@ -114,7 +127,9 @@ function resolveModelUrl(path: string | null): string | undefined {
   return path;
 }
 
-function computeBounds(meshes: readonly AbstractMesh[]): { min: Vector3; max: Vector3 } {
+function computeBounds(
+  meshes: readonly AbstractMesh[]
+): { min: Vector3; max: Vector3 } {
   const min = new Vector3(Infinity, Infinity, Infinity);
   const max = new Vector3(-Infinity, -Infinity, -Infinity);
   for (const mesh of meshes) {

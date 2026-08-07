@@ -126,7 +126,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
     calibration: {
       position: { x: 0, y: 0, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
-      scale: 2.76,
+      scale: 4.5,
     },
   },
   {
