@@ -12,6 +12,7 @@ import "@babylonjs/core/Shaders/rgbdEncode.fragment";
 
 import { PlayerAssetLoader } from "./assets/PlayerAssetLoader";
 import { GameAudioManager } from "./audio/GameAudioManager";
+import { CosmeticThumbnailService } from "./player/cosmetics/CosmeticThumbnailService";
 import { WORLD_VISUAL_CONFIG } from "./config/visual/world-visual.config";
 import {
   getCosmetic,
@@ -155,6 +156,13 @@ clock.pause();
 runStateStore.startRun();
 applyEquippedCosmetics();
 ui.showLoading();
+// Render real mini images of the cosmetic models for the store
+void new CosmeticThumbnailService()
+  .generateAll()
+  .then((thumbnails) => ui.setCosmeticThumbnails(thumbnails))
+  .catch(() => {
+    /* store falls back to color swatches */
+  });
 void runScene.startAssetLoad()
   .catch((error) => {
     console.warn("[ShibaSkating] Optional asset load failed; using fallbacks.", error);
@@ -458,6 +466,9 @@ function handleCosmeticAction(item: CosmeticItem): void {
 function applyEquippedCosmetics(): void {
   const profile = profileStore.getSnapshot();
   runScene.applyCosmetics(
+    profile.equippedDog,
+    profile.equippedBoard,
+    profile.equippedHat,
     getCosmetic(profile.equippedDog).color,
     getCosmetic(profile.equippedBoard).color
   );

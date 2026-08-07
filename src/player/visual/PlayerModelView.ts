@@ -150,6 +150,16 @@ export class PlayerModelView {
     }
   }
 
+  /** Shows/hides the default cat — hidden while a cosmetic dog is equipped. */
+  setDogVisible(visible: boolean): void {
+    for (const m of this.catMeshes) m.setEnabled(visible);
+  }
+
+  /** Shows/hides the default skateboard — hidden while a cosmetic board is equipped. */
+  setBoardVisible(visible: boolean): void {
+    for (const m of this.boardMeshes) m.setEnabled(visible);
+  }
+
   disposeModelInstances(): void {
     this.catInstance?.dispose();
     this.boardInstance?.dispose();

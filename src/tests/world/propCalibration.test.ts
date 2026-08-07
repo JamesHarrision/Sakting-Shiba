@@ -15,13 +15,13 @@ describe("obstacle asset calibration", () => {
     expect(building.mergeMeshes).toBe(true);
     expect(
       building.calibration.position.y +
-        sourceMinimum.y * building.calibration.scale
+        sourceMinimum.y * building.calibration.scale,
     ).toBeCloseTo(0, 2);
     expect(
-      building.calibration.position.x + centerX * building.calibration.scale
+      building.calibration.position.x + centerX * building.calibration.scale,
     ).toBeCloseTo(0, 2);
     expect(
-      building.calibration.position.z + centerZ * building.calibration.scale
+      building.calibration.position.z + centerZ * building.calibration.scale,
     ).toBeCloseTo(0, 2);
   });
 

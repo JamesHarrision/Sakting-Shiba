@@ -113,8 +113,6 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
     kind: "cone",
     assetPath: `${PROPS_ASSET_DIR}/cone.glb`,
     useAsset: true,
-    // Hide the grey square base plate (Cylinder_Base mesh) that cones sit on
-    hiddenMeshPattern: "Cylinder_Base",
     calibration: {
       position: { x: 0, y: 0.013, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },

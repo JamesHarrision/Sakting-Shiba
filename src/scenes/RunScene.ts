@@ -139,8 +139,20 @@ export class RunScene {
     return this.worldController.trackManager;
   }
 
-  applyCosmetics(dogColor: string, boardColor: string): void {
-    this.playerVisual.applyCosmetics(dogColor, boardColor);
+  applyCosmetics(
+    dogId: string,
+    boardId: string,
+    hatId: string,
+    dogColor: string,
+    boardColor: string
+  ): void {
+    this.playerVisual.applyCosmetics(
+      dogId,
+      boardId,
+      hatId,
+      dogColor,
+      boardColor
+    );
   }
 
   /** 0..1 scene brightness (settings slider). */

@@ -39,13 +39,13 @@ export const OBSTACLE_RULES: Readonly<Record<ObstacleItemType, ObstacleRule>> =
       requiresCrouch: true
     }),
     obstacle_dumpster: Object.freeze({
-      // Tall + wide -> dodge to another lane
+      // Tall + wide -> dodge to another lane. Intentionally has NO
+      // jumpClearance, so jumping over it never succeeds.
       width: 1,
       height: 1.04,
       depth: 1.25,
       centerYOffset: 0.52,
       visualYOffset: 0,
-      markerColor: "#F0847A",
-      jumpClearance: 1.65
+      markerColor: "#F0847A"
     })
   });

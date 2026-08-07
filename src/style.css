@@ -85,7 +85,8 @@ button:focus-visible {
   height: 2px;
   background: rgba(255, 255, 255, 0.72);
   transform: skewX(-24deg) translateX(-20vw);
-  animation: speed-streak calc(900ms - var(--line) * 22ms) var(--motion) infinite;
+  animation: speed-streak calc(900ms - var(--line) * 22ms) var(--motion)
+    infinite;
   animation-delay: calc(var(--line) * -73ms);
   animation-play-state: paused;
 }
@@ -227,8 +228,9 @@ button:focus-visible {
 .menu-profile {
   display: flex;
   align-items: center;
+  justify-content: space-around;
   flex-wrap: wrap;
-  gap: 18px 28px;
+  gap: 100px 28px;
   margin: 28px 0;
 }
 
@@ -249,17 +251,22 @@ button:focus-visible {
   color: rgba(255, 255, 255, 0.55);
   font-size: 10px;
   font-weight: 800;
+  font-size: 30px;
   text-transform: uppercase;
 }
 
 .menu-profile > p:not(.wallet-line) strong {
   margin-top: 2px;
-  font-size: 18px;
+  font-size: 35px;
+}
+
+.menu-profile > p.wallet-line {
+  font-size: 35px;
 }
 
 .coin-mark {
-  width: 16px;
-  height: 16px;
+  width: 35px;
+  height: 35px;
   border: 4px solid var(--yellow);
   border-radius: 50%;
 }
@@ -389,10 +396,18 @@ button:focus-visible {
   animation: power-in 420ms var(--motion) both;
 }
 
-.power-magnet { color: #ff8098; }
-.power-spring { color: var(--mint); }
-.power-rocket { color: var(--blue); }
-.power-star { color: var(--yellow); }
+.power-magnet {
+  color: #ff8098;
+}
+.power-spring {
+  color: var(--mint);
+}
+.power-rocket {
+  color: var(--blue);
+}
+.power-star {
+  color: var(--yellow);
+}
 
 .icon-button {
   width: 48px;
@@ -403,7 +418,9 @@ button:focus-visible {
   cursor: pointer;
   pointer-events: auto;
   font-weight: 900;
-  transition: transform 400ms var(--motion), background-color 400ms var(--motion);
+  transition:
+    transform 400ms var(--motion),
+    background-color 400ms var(--motion);
 }
 
 .icon-button:hover {
@@ -426,7 +443,9 @@ button:focus-visible {
   pointer-events: auto;
   font-size: 18px;
   font-weight: 900;
-  transition: transform 400ms var(--motion), background-color 400ms var(--motion);
+  transition:
+    transform 400ms var(--motion),
+    background-color 400ms var(--motion);
 }
 
 .audio-toggle:hover {
@@ -571,7 +590,9 @@ button:focus-visible {
   border-radius: 8px;
   background: rgba(17, 20, 25, 0.86);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
-  transition: transform 500ms var(--motion), background-color 500ms var(--motion);
+  transition:
+    transform 500ms var(--motion),
+    background-color 500ms var(--motion);
 }
 
 .store-item:hover {
@@ -651,7 +672,9 @@ button:focus-visible {
   border-radius: 10px;
   background: rgba(17, 20, 25, 0.86);
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
-  transition: box-shadow 300ms var(--motion), background-color 300ms var(--motion);
+  transition:
+    box-shadow 300ms var(--motion),
+    background-color 300ms var(--motion);
 }
 
 .store-row.is-active {
@@ -674,7 +697,9 @@ button:focus-visible {
   background: rgba(12, 15, 19, 0.72);
   cursor: pointer;
   font-size: 14px;
-  transition: background-color 200ms var(--motion), color 200ms var(--motion);
+  transition:
+    background-color 200ms var(--motion),
+    color 200ms var(--motion);
 }
 
 .store-arrow:hover {
@@ -689,12 +714,16 @@ button:focus-visible {
   gap: 12px;
 }
 
-.store-row-display::before {
+.store-row-swatch,
+.store-row-img {
   width: 62px;
   height: 62px;
   border-radius: 8px;
+  object-fit: cover;
+}
+
+.store-row-swatch {
   background: linear-gradient(135deg, var(--swatch), var(--accent));
-  content: "";
 }
 
 .store-row-display p {
@@ -785,71 +814,149 @@ button:focus-visible {
 }
 
 @keyframes overlay-in {
-  from { opacity: 0; }
+  from {
+    opacity: 0;
+  }
 }
 
 @keyframes loading-slide {
-  from { transform: translateX(-105%); }
-  to { transform: translateX(245%); }
+  from {
+    transform: translateX(-105%);
+  }
+  to {
+    transform: translateX(245%);
+  }
 }
 
 @keyframes panel-in {
-  from { opacity: 0; transform: translateY(42px); }
+  from {
+    opacity: 0;
+    transform: translateY(42px);
+  }
 }
 
 @keyframes countdown-pulse {
-  from { opacity: 0; transform: scale(1.25); }
-  to { opacity: 1; transform: scale(1); }
+  from {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 @keyframes tutorial-in {
-  from { opacity: 0; transform: translate(-50%, -18px); }
+  from {
+    opacity: 0;
+    transform: translate(-50%, -18px);
+  }
 }
 
 @keyframes power-in {
-  from { opacity: 0; transform: translateY(-8px); }
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
 }
 
 @keyframes speed-streak {
-  from { transform: skewX(-24deg) translateX(-25vw); }
-  to { transform: skewX(-24deg) translateX(125vw); }
+  from {
+    transform: skewX(-24deg) translateX(-25vw);
+  }
+  to {
+    transform: skewX(-24deg) translateX(125vw);
+  }
 }
 
 @keyframes impact-flash {
-  0% { opacity: 0.58; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 0.58;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 @keyframes soft-flash {
-  0% { opacity: 0.16; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 0.16;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 @media (pointer: coarse), (max-width: 800px) {
-  .touch-controls { display: grid; }
-  .run-hud { top: 8px; left: 8px; right: 8px; }
-  .hud-stat { min-width: 74px; padding: 8px; }
-  .hud-stat strong { font-size: 16px; }
-  .hud-speed { display: none; }
-  .power-strip { position: absolute; top: 58px; left: 0; }
-  .game-overlay { padding: 28px 18px 104px; }
-  .menu-screen h1 { font-size: 64px; }
-  .store-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .tutorial-callout { top: 76px; max-width: calc(100vw - 24px); }
-  .tutorial-callout strong { white-space: normal; }
+  .touch-controls {
+    display: grid;
+  }
+  .run-hud {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+  }
+  .hud-stat {
+    min-width: 74px;
+    padding: 8px;
+  }
+  .hud-stat strong {
+    font-size: 16px;
+  }
+  .hud-speed {
+    display: none;
+  }
+  .power-strip {
+    position: absolute;
+    top: 58px;
+    left: 0;
+  }
+  .game-overlay {
+    padding: 28px 18px 104px;
+  }
+  .menu-screen h1 {
+    font-size: 64px;
+  }
+  .store-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tutorial-callout {
+    top: 76px;
+    max-width: calc(100vw - 24px);
+  }
+  .tutorial-callout strong {
+    white-space: normal;
+  }
 }
 
 @media (max-width: 520px) {
-  .menu-screen h1 { font-size: 58px; }
-  .store-grid { grid-template-columns: 1fr; }
-  .store-screen > header { align-items: start; }
-  .store-screen h2 { font-size: 42px; }
-  .menu-actions { align-items: stretch; flex-direction: column; }
-  .primary-command, .secondary-command { justify-content: center; width: 100%; }
+  .menu-screen h1 {
+    font-size: 58px;
+  }
+  .store-grid {
+    grid-template-columns: 1fr;
+  }
+  .store-screen > header {
+    align-items: start;
+  }
+  .store-screen h2 {
+    font-size: 42px;
+  }
+  .menu-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .primary-command,
+  .secondary-command {
+    justify-content: center;
+    width: 100%;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 1ms !important;
     transition-duration: 1ms !important;
   }

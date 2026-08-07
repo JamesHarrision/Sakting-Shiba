@@ -6,7 +6,7 @@ import {
   COSMETIC_CATEGORIES,
   COSMETICS,
   getCosmeticsForCategory,
-  type CosmeticItem
+  type CosmeticItem,
 } from "../config/visual/cosmeticsConfig";
 import type { CosmeticCategory } from "../gameplay/PlayerProfileStore";
 import type { TutorialStep } from "../gameplay/TutorialSystem";
@@ -16,14 +16,14 @@ const POWER_UP_LABELS: Readonly<Record<string, string>> = Object.freeze({
   magnet: "Coin Magnet",
   spring: "Spring Paws",
   rocket: "Rocket Pack",
-  star: "2x Score"
+  star: "2x Score",
 });
 
 const CATEGORY_LABELS: Readonly<Record<CosmeticCategory, string>> =
   Object.freeze({
     hat: "Hats",
     dog: "Dogs",
-    board: "Skateboards"
+    board: "Skateboards",
   });
 
 export interface GameUiActions {
@@ -43,7 +43,9 @@ export interface GameUiActions {
   readonly onMusicVolume: (volume: number) => void;
   readonly onSfxVolume: (volume: number) => void;
   readonly onBrightness: (factor: number) => void;
-  readonly onInput: (action: "moveLeft" | "moveRight" | "jump" | "crouch") => void;
+  readonly onInput: (
+    action: "moveLeft" | "moveRight" | "jump" | "crouch",
+  ) => void;
 }
 
 export class GameUiController {
@@ -57,11 +59,12 @@ export class GameUiController {
   private readonly storeIndex: Record<CosmeticCategory, number> = {
     hat: 0,
     dog: 0,
-    board: 0
+    board: 0,
   };
   private storeActiveCategory: CosmeticCategory = "dog";
   private storeFeedback = "";
   private storeProfile: Readonly<PlayerProfile> | null = null;
+  private cosmeticThumbnails: Readonly<Record<string, string>> = {};
 
   constructor(actions: GameUiActions) {
     this.actions = actions;
@@ -115,7 +118,6 @@ export class GameUiController {
     this.overlay.hidden = false;
     this.overlay.innerHTML = `
       <section class="menu-screen">
-        <p class="game-kicker">Rooftop runner</p>
         <h1>Shiba<br>Skating</h1>
         <div class="menu-profile">
           <p class="wallet-line"><span class="coin-mark"></span>${profile.coins}</p>
@@ -163,7 +165,7 @@ export class GameUiController {
     run: Readonly<RunState>,
     profile: Readonly<PlayerProfile>,
     hitType: ObstacleItemType | null = null,
-    record: Readonly<RunRecordResult> | null = null
+    record: Readonly<RunRecordResult> | null = null,
   ): void {
     this.tutorial.hidden = true;
     this.touchControls.hidden = true;
@@ -196,7 +198,11 @@ export class GameUiController {
     this.renderStore();
   }
 
-  showSettings(musicVolume: number, sfxVolume: number, brightness: number): void {
+  showSettings(
+    musicVolume: number,
+    sfxVolume: number,
+    brightness: number,
+  ): void {
     this.hud.hidden = true;
     this.tutorial.hidden = true;
     this.touchControls.hidden = true;
@@ -211,16 +217,16 @@ export class GameUiController {
       </section>`;
   }
 
-  updateHud(
-    run: Readonly<RunState>,
-    powers: Readonly<PowerUpSnapshot>
-  ): void {
+  updateHud(run: Readonly<RunState>, powers: Readonly<PowerUpSnapshot>): void {
     this.setText("[data-ui='score']", run.score.toLocaleString());
     this.setText("[data-ui='run-coins']", String(run.coins));
     this.setText("[data-ui='speed']", `${run.speed.toFixed(1)}x`);
     const strip = this.requireElement("[data-ui='powers']");
     strip.innerHTML = Object.entries(powers.active)
-      .map(([type, seconds]) => `<span class="power-pill power-${type}">${POWER_UP_LABELS[type] ?? type} ${Math.ceil(seconds ?? 0)}s</span>`)
+      .map(
+        ([type, seconds]) =>
+          `<span class="power-pill power-${type}">${POWER_UP_LABELS[type] ?? type} ${Math.ceil(seconds ?? 0)}s</span>`,
+      )
       .join("");
   }
 
@@ -235,7 +241,7 @@ export class GameUiController {
       lane: "Move left or right",
       jump: "Jump over boxes",
       crouch: "Crouch under fences",
-      coin: "Collect a coin"
+      coin: "Collect a coin",
     };
     this.tutorial.hidden = false;
     this.tutorial.innerHTML = `<strong>${copy[step]}</strong><button data-action="skip-tutorial">Skip</button>`;
@@ -246,6 +252,12 @@ export class GameUiController {
     button.textContent = muted ? "×" : "♪";
     button.setAttribute("aria-label", muted ? "Enable audio" : "Mute audio");
     button.title = muted ? "Enable audio" : "Mute audio";
+  }
+
+  /** Mini images rendered from the real cosmetic models. */
+  setCosmeticThumbnails(thumbnails: Readonly<Record<string, string>>): void {
+    this.cosmeticThumbnails = thumbnails;
+    if (this.storeProfile) this.renderStore();
   }
 
   dispose(): void {
@@ -262,17 +274,17 @@ export class GameUiController {
     const activeItems = getCosmeticsForCategory(this.storeActiveCategory);
     const activeIndex = this.clampIndex(
       this.storeIndex[this.storeActiveCategory],
-      activeItems.length
+      activeItems.length,
     );
     const activeItem = activeItems[activeIndex];
 
     const rows = COSMETIC_CATEGORIES.map((category) =>
-      this.renderStoreRow(category, profile)
+      this.renderStoreRow(category, profile),
     ).join("");
     const equipped = this.isEquipped(
       this.storeActiveCategory,
       activeItem.id,
-      profile
+      profile,
     );
     const owned = profile.ownedCosmetics.includes(activeItem.id);
     const buyLabel = equipped
@@ -296,7 +308,7 @@ export class GameUiController {
 
   private renderStoreRow(
     category: CosmeticCategory,
-    profile: Readonly<PlayerProfile>
+    profile: Readonly<PlayerProfile>,
   ): string {
     const items = getCosmeticsForCategory(category);
     const index = this.clampIndex(this.storeIndex[category], items.length);
@@ -310,12 +322,17 @@ export class GameUiController {
         : item.price === 0
           ? "Free"
           : `${item.price} coins`;
+    const thumbnail = this.cosmeticThumbnails[item.id];
+    const preview = thumbnail
+      ? `<img class="store-row-img" src="${thumbnail}" alt="${item.name}" />`
+      : `<span class="store-row-swatch" style="--swatch:${item.color};--accent:${item.accent}"></span>`;
 
     return `
       <section class="store-row ${category === this.storeActiveCategory ? "is-active" : ""}" data-category="${category}">
         <span class="store-row-label">${CATEGORY_LABELS[category]}</span>
         <button class="store-arrow" data-browse="${category}" data-dir="-1" aria-label="Previous ${CATEGORY_LABELS[category]}">◀</button>
-        <div class="store-row-display" style="--swatch:${item.color};--accent:${item.accent}">
+        <div class="store-row-display">
+          ${preview}
           <p>${item.name}</p>
           <span class="${equipped ? "is-equipped" : ""}">${status}</span>
         </div>
@@ -326,7 +343,7 @@ export class GameUiController {
   private isEquipped(
     category: CosmeticCategory,
     itemId: string,
-    profile: Readonly<PlayerProfile>
+    profile: Readonly<PlayerProfile>,
   ): boolean {
     if (category === "hat") return profile.equippedHat === itemId;
     if (category === "dog") return profile.equippedDog === itemId;
@@ -338,7 +355,7 @@ export class GameUiController {
   private renderSettingSlider(
     key: "music" | "sfx" | "brightness",
     label: string,
-    value: number
+    value: number,
   ): string {
     const percent = Math.round(value * 100);
     return `
@@ -365,7 +382,7 @@ export class GameUiController {
 
   private readonly handleClick = (event: Event): void => {
     const target = (event.target as HTMLElement).closest<HTMLElement>(
-      "[data-action],[data-input],[data-cosmetic],[data-browse]"
+      "[data-action],[data-input],[data-cosmetic],[data-browse]",
     );
     if (!target) return;
 
@@ -376,14 +393,19 @@ export class GameUiController {
       const items = getCosmeticsForCategory(browse);
       this.storeIndex[browse] = this.clampIndex(
         this.storeIndex[browse] + dir,
-        items.length
+        items.length,
       );
       this.storeFeedback = "";
       this.renderStore();
       return;
     }
 
-    const input = target.dataset.input as "moveLeft" | "moveRight" | "jump" | "crouch" | undefined;
+    const input = target.dataset.input as
+      | "moveLeft"
+      | "moveRight"
+      | "jump"
+      | "crouch"
+      | undefined;
     if (input) return this.actions.onInput(input);
     const cosmeticId = target.dataset.cosmetic;
     if (cosmeticId) {
@@ -418,14 +440,16 @@ export class GameUiController {
       obstacle_fence: ["Fence impact", "Crouch to pass beneath the fence."],
       obstacle_dumpster: [
         "Dumpster impact",
-        "Switch lanes or clear it near the top of a jump."
-      ]
+        "Switch lanes or clear it near the top of a jump.",
+      ],
     };
     const [title, tip] = copy[hitType];
     return `<p class="crash-reason"><strong>${title}</strong><span>${tip}</span></p>`;
   }
 
-  private requireElement<T extends HTMLElement = HTMLElement>(selector: string): T {
+  private requireElement<T extends HTMLElement = HTMLElement>(
+    selector: string,
+  ): T {
     const element = this.root.querySelector<T>(selector);
     if (!element) throw new Error(`Missing UI element: ${selector}`);
     return element;

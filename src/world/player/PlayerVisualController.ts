@@ -14,6 +14,7 @@ import { LandingDustEffect } from "../../vfx/LandingDustEffect";
 import { PlayerBlobShadow } from "../../vfx/PlayerBlobShadow";
 import { ProceduralPlayer } from "./ProceduralPlayer";
 import { tintMaterial } from "./materialTint";
+import { CosmeticModelLayer } from "../../player/cosmetics/CosmeticModelLayer";
 
 const CFG = PLAYER_MODEL_CONFIG;
 const RUN_BOB_SPEED = 8;
@@ -23,6 +24,8 @@ const BOARD_TILT_SPEED = 12;
 const SQUASH_RECOVER_SPEED = 14;
 const DEFAULT_CAT_COLOR = "#E87848";
 const DEFAULT_BOARD_COLOR = "#68503E";
+const DEFAULT_DOG_ID = "dog.default";
+const DEFAULT_BOARD_ID = "board.default";
 
 export class PlayerVisualController {
   readonly player: ProceduralPlayer;
@@ -30,6 +33,7 @@ export class PlayerVisualController {
 
   private readonly blobShadow: PlayerBlobShadow;
   private readonly dustEffect: LandingDustEffect;
+  private readonly cosmeticLayer: CosmeticModelLayer;
   private modelLoadPromise?: Promise<void>;
   private currentBob = 0;
   private state: PlayerVisualSnapshot = {
@@ -52,6 +56,9 @@ export class PlayerVisualController {
   private disposed = false;
   private catColor = DEFAULT_CAT_COLOR;
   private boardColor = DEFAULT_BOARD_COLOR;
+  private dogId = DEFAULT_DOG_ID;
+  private boardId = DEFAULT_BOARD_ID;
+  private hatId = "hat.default";
 
   constructor(
     scene: Scene,
@@ -71,6 +78,12 @@ export class PlayerVisualController {
     );
     this.modelView.hideModels();
 
+    this.cosmeticLayer = new CosmeticModelLayer(
+      scene,
+      playerRig.nodes.catMount,
+      playerRig.nodes.boardMount
+    );
+
     this.blobShadow = new PlayerBlobShadow(scene, playerRig.nodes.shadowAnchor);
     this.dustEffect = new LandingDustEffect(scene, playerRig.nodes.effectAnchor);
     this.playerRig.setVisualLoadState("fallback");
@@ -85,7 +98,7 @@ export class PlayerVisualController {
     }
 
     this.playerRig.setVisualLoadState("loading");
-    this.modelLoadPromise = this.modelView.loadAssets().then((fullyLoaded) => {
+    this.modelLoadPromise = this.modelView.loadAssets().then(async (fullyLoaded) => {
       if (this.disposed) return;
       this.catLoaded = this.modelView.catLoaded;
       this.boardLoaded = this.modelView.boardLoaded;
@@ -99,7 +112,17 @@ export class PlayerVisualController {
         this.player.setEnabled(true);
         this.playerRig.setVisualLoadState("fallback");
       }
-      this.applyCosmetics(this.catColor, this.boardColor);
+      await this.cosmeticLayer.preloadAll();
+      if (!fullyLoaded) {
+        this.cosmeticLayer.setAllEnabled(false);
+      }
+      this.applyCosmetics(
+        this.dogId,
+        this.boardId,
+        this.hatId,
+        this.catColor,
+        this.boardColor
+      );
     });
 
     return this.modelLoadPromise;
@@ -125,9 +148,26 @@ export class PlayerVisualController {
     return this.isModelLoaded ? this.modelView.allMeshes : this.player.meshes;
   }
 
-  applyCosmetics(catColor: string, boardColor: string): void {
-    this.catColor = catColor;
+  applyCosmetics(
+    dogId: string,
+    boardId: string,
+    hatId: string,
+    dogColor: string,
+    boardColor: string
+  ): void {
+    this.dogId = dogId;
+    this.boardId = boardId;
+    this.hatId = hatId;
+    this.catColor = dogColor;
     this.boardColor = boardColor;
+
+    // Real cosmetic models: swap in the equipped dog/board/hat
+    const equip = this.cosmeticLayer.applyEquipped(dogId, boardId, hatId);
+    if (this.modelView.isFullyLoaded) {
+      this.modelView.setDogVisible(equip.showDefaultDog);
+      this.modelView.setBoardVisible(equip.showDefaultBoard);
+    }
+
     this.tintMeshes(
       [
         this.player.catBody,
@@ -137,8 +177,8 @@ export class PlayerVisualController {
         this.player.tail,
         ...this.modelView.catMeshes
       ],
-      catColor,
-      catColor === DEFAULT_CAT_COLOR
+      dogColor,
+      dogColor === DEFAULT_CAT_COLOR
     );
     this.tintMeshes(
       [
@@ -210,6 +250,7 @@ export class PlayerVisualController {
     if (this.disposed) return;
     this.disposed = true;
     this.modelView.dispose();
+    this.cosmeticLayer.dispose();
     this.player.dispose();
     this.blobShadow.dispose();
     this.dustEffect.dispose();
