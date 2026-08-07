@@ -119,7 +119,10 @@ export class CosmeticModelLayer {
   private async preload(item: CosmeticItem): Promise<void> {
     if (!item.model || this.containers.has(item.id)) return;
     const url = resolveModelUrl(item.model);
-    if (!url) return;
+    if (!url) {
+      console.warn(`[CosmeticLayer] preload SKIP ${item.id}: no url for model ${item.model}`);
+      return;
+    }
     try {
       const container = await SceneLoader.LoadAssetContainerAsync(
         url,
@@ -128,8 +131,9 @@ export class CosmeticModelLayer {
       );
       container.removeAllFromScene();
       this.containers.set(item.id, container);
-    } catch {
-      // Missing/broken model
+      console.warn(`[CosmeticLayer] preload OK ${item.id} (${container.meshes.length} meshes)`);
+    } catch (err) {
+      console.warn(`[CosmeticLayer] preload FAIL ${item.id}: ${String(err)}`);
     }
   }
 
