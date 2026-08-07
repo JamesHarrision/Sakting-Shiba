@@ -18,7 +18,7 @@ export class StraightChunkD extends TrackChunk {
       this.placeProp("plant", side * this.rooftopX, len / 2 - 3, seed++);
       this.placeProp("plant", side * this.rooftopX, len / 2 + 3, seed++);
       this.placeProp("lamp", side * this.rooftopX, len / 2, seed++);
-      this.placeProp("ac", side * (this.rooftopX + 0.3), 12 + rand() * 4, seed++);
+      this.placeProp("cone", side * (this.rooftopX + 0.3), 12 + rand() * 4, seed++);
     }
   }
 }

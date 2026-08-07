@@ -53,7 +53,7 @@ describe("TrackManager", () => {
     expect(manager.getDebugStats().activeChunks).toBe(
       WORLD_VISUAL_CONFIG.trackChunkCount
     );
-    expect(scene.meshes.length).toBeLessThan(240);
+    expect(scene.meshes.length).toBeLessThan(320);
 
     // Scroll enough to recycle every chunk several times
     for (let i = 0; i < 500; i += 1) {

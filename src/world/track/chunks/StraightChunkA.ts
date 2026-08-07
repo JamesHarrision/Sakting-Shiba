@@ -1,8 +1,8 @@
 import { TrackChunk, seededRandom } from "./TrackChunk";
 
 /**
- * StraightChunkA — balanced rooftop mix: building silhouettes, lamps, plants
- * and classic rooftop staples (vent, AC, pipes, antennas, warning lights).
+ * StraightChunkA — balanced rooftop mix: building + skyline silhouettes,
+ * lamps, plants and small GLB street props (box, cone, tree).
  */
 export class StraightChunkA extends TrackChunk {
   protected buildVariantProps(seedOffset: number): void {
@@ -22,21 +22,13 @@ export class StraightChunkA extends TrackChunk {
       this.placeProp("plant", side * this.rooftopX, len - 8 - rand() * 4, seed++);
     }
 
-    // Rooftop mix along both sides
+    // Small GLB street props along both sides
     for (const side of [-1, 1] as const) {
       let z = 6 + rand() * 4;
       while (z < len - 6) {
         const r2 = rand();
         const kind =
-          r2 < 0.3
-            ? "vent"
-            : r2 < 0.5
-              ? "ac"
-              : r2 < 0.68
-                ? "pipe"
-                : r2 < 0.85
-                  ? "antenna"
-                  : "warningLight";
+          r2 < 0.35 ? "box" : r2 < 0.6 ? "cone" : r2 < 0.8 ? "plant" : "tree";
         this.placeProp(kind, side * this.rooftopX, z, seed++);
         z += 8 + rand() * 6;
       }

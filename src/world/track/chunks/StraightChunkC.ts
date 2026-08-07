@@ -1,8 +1,8 @@
 import { TrackChunk, seededRandom } from "./TrackChunk";
 
 /**
- * StraightChunkC — industrial variant: trees, lamps, pipes, vents, antennas,
- * warning lights, cones and a dumpster.
+ * StraightChunkC — park variant: trees, lamps, cones, dumpsters and
+ * building/skyline silhouettes.
  */
 export class StraightChunkC extends TrackChunk {
   protected buildVariantProps(seedOffset: number): void {
@@ -13,16 +13,10 @@ export class StraightChunkC extends TrackChunk {
     for (const side of [-1, 1] as const) {
       this.placeProp("tree", side * this.rooftopX, 6 + rand() * 4, seed++);
       this.placeProp("lamp", side * this.rooftopX, len - 7 - rand() * 3, seed++);
-      this.placeProp("pipe", side * this.rooftopX, 12 + rand() * 4, seed++);
-      this.placeProp("vent", side * this.rooftopX, len / 2, seed++);
-      this.placeProp(
-        "warningLight",
-        side * this.rooftopX,
-        len / 2 + 5 + rand() * 3,
-        seed++
-      );
-      this.placeProp("antenna", side * this.rooftopX, 9 + rand() * 4, seed++);
+      this.placeProp("plant", side * this.rooftopX, 12 + rand() * 4, seed++);
+      this.placeProp("cone", side * this.rooftopX, len / 2 + 1 + rand() * 3, seed++);
       this.placeProp("cone", side * this.rooftopX, len - 14 - rand() * 4, seed++);
+      this.placeProp("box", side * this.rooftopX, 9 + rand() * 4, seed++);
       this.placeProp("skyline", side * this.rooftopX, len / 2 - 4, seed++);
     }
 
