@@ -3,14 +3,53 @@ import type { GameEventBus } from "../events/GameEventBus";
 type SfxName = "jump" | "land" | "coin" | "hit" | "power";
 export const MUSIC_LOOP_SECONDS = 20;
 
+/**
+ * Real audio files (drop in src/assets/audio/). Vite's import.meta.glob only
+ * contains files that exist, so a missing sound silently keeps the procedural
+ * fallback with zero console noise. Files may be .ogg/.mp3/.m4a — the browser
+ * decodes by content, not by extension.
+ */
+const AUDIO_URLS = import.meta.glob("/src/assets/audio/**/*.{ogg,mp3,m4a}", {
+  query: "?url",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
+
+const MUSIC_URL = findAudio(AUDIO_URLS, "music");
+const SFX_URLS: Readonly<Partial<Record<SfxName, string>>> = Object.freeze({
+  jump: findAudio(AUDIO_URLS, "jump"),
+  coin: findAudio(AUDIO_URLS, "coin"),
+  hit: findAudio(AUDIO_URLS, "hurt") ?? findAudio(AUDIO_URLS, "hit"),
+  power: findAudio(AUDIO_URLS, "power"),
+  // land: no file provided -> procedural blip
+});
+
+function findAudio(
+  urls: Record<string, string>,
+  baseName: string,
+): string | undefined {
+  const key = Object.keys(urls).find((k) => {
+    const file = k.slice(k.lastIndexOf("/") + 1).toLowerCase();
+    return file.startsWith(baseName);
+  });
+  return key ? urls[key] : undefined;
+}
+
 export class GameAudioManager {
   private context?: AudioContext;
   private master?: GainNode;
   private musicGain?: GainNode;
   private sfxGain?: GainNode;
   private musicSource?: AudioBufferSourceNode;
+  private hasRealMusic = false;
+  private readonly sfxBuffers = new Map<SfxName, AudioBuffer>();
   private muted = false;
   private paused = true;
+  /** 0..1 settings-slider values; scaled by the base gain below. */
+  private musicVolume = 1;
+  private sfxVolume = 1;
+  private static readonly MUSIC_BASE_GAIN = 1;
+  private static readonly SFX_BASE_GAIN = 0.3;
   private readonly unsubscribe: Array<() => void> = [];
 
   constructor(eventBus: GameEventBus) {
@@ -19,7 +58,7 @@ export class GameAudioManager {
       eventBus.on("PLAYER_LANDED", () => this.play("land")),
       eventBus.on("COIN_COLLECTED", () => this.play("coin")),
       eventBus.on("PLAYER_HIT", () => this.play("hit")),
-      eventBus.on("POWERUP_ACTIVATED", () => this.play("power"))
+      eventBus.on("POWERUP_ACTIVATED", () => this.play("power")),
     );
   }
 
@@ -28,20 +67,61 @@ export class GameAudioManager {
   }
 
   async unlock(): Promise<void> {
-    if (!this.context) this.initialize();
-    if (this.context?.state === "suspended") await this.context.resume();
+    if (!this.context) {
+      await this.initialize();
+    }
+    // Resume must happen before decodeAudioData in some browsers (Safari)
+    if (this.context?.state === "suspended") {
+      await this.context.resume();
+    }
+    // Audio was decoded while the context was suspended on some engines;
+    // decode again post-resume when the first attempt produced no music.
+    if (this.context && !this.hasRealMusic && MUSIC_URL) {
+      const buffer = await loadAudioBuffer(this.context, MUSIC_URL);
+      if (buffer) this.startBufferLoop(buffer);
+    }
   }
 
   setMuted(muted: boolean): void {
     this.muted = muted;
     if (!this.context || !this.master) return;
-    this.master.gain.setTargetAtTime(muted ? 0 : 0.78, this.context.currentTime, 0.025);
+    this.master.gain.setTargetAtTime(
+      muted ? 0 : 0.78,
+      this.context.currentTime,
+      0.025,
+    );
   }
 
   setPaused(paused: boolean): void {
     this.paused = paused;
     if (!this.context || !this.musicGain) return;
-    this.musicGain.gain.setTargetAtTime(paused ? 0 : 0.14, this.context.currentTime, 0.12);
+    this.musicGain.gain.setTargetAtTime(
+      paused ? 0 : this.musicVolume * GameAudioManager.MUSIC_BASE_GAIN,
+      this.context.currentTime,
+      0.12,
+    );
+  }
+
+  /** 0..1 background-music volume (kept independent of mute). */
+  setMusicVolume(volume: number): void {
+    this.musicVolume = Math.min(1, Math.max(0, volume));
+    if (!this.context || !this.musicGain) return;
+    this.musicGain.gain.setTargetAtTime(
+      this.paused ? 0 : this.musicVolume * GameAudioManager.MUSIC_BASE_GAIN,
+      this.context.currentTime,
+      0.06,
+    );
+  }
+
+  /** 0..1 SFX volume (kept independent of mute). */
+  setSfxVolume(volume: number): void {
+    this.sfxVolume = Math.min(1, Math.max(0, volume));
+    if (!this.context || !this.sfxGain) return;
+    this.sfxGain.gain.setTargetAtTime(
+      this.sfxVolume * GameAudioManager.SFX_BASE_GAIN,
+      this.context.currentTime,
+      0.06,
+    );
   }
 
   dispose(): void {
@@ -52,23 +132,68 @@ export class GameAudioManager {
     this.context = undefined;
   }
 
-  private initialize(): void {
-    const AudioContextCtor = window.AudioContext;
-    if (!AudioContextCtor) return;
-    this.context = new AudioContextCtor();
-    this.master = this.context.createGain();
-    this.musicGain = this.context.createGain();
-    this.sfxGain = this.context.createGain();
-    this.master.gain.value = this.muted ? 0 : 0.78;
-    this.musicGain.gain.value = this.paused ? 0 : 0.14;
-    this.sfxGain.gain.value = 0.32;
-    this.musicGain.connect(this.master);
-    this.sfxGain.connect(this.master);
-    this.master.connect(this.context.destination);
+  private async initialize(): Promise<void> {
+    try {
+      const AudioContextCtor =
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (!AudioContextCtor) return;
+      this.context = new AudioContextCtor();
+      this.master = this.context.createGain();
+      this.musicGain = this.context.createGain();
+      this.sfxGain = this.context.createGain();
+      this.master.gain.value = this.muted ? 0 : 0.78;
+      this.musicGain.gain.value = this.paused
+        ? 0
+        : this.musicVolume * GameAudioManager.MUSIC_BASE_GAIN;
+      this.sfxGain.gain.value = this.sfxVolume * GameAudioManager.SFX_BASE_GAIN;
+      this.musicGain.connect(this.master);
+      this.sfxGain.connect(this.master);
+      this.master.connect(this.context.destination);
 
+      // Prefer the real music loop; fall back to the procedural loop when absent.
+      const musicBuffer = await loadAudioBuffer(this.context, MUSIC_URL);
+      if (musicBuffer) {
+        this.startBufferLoop(musicBuffer);
+        this.hasRealMusic = true;
+      } else {
+        this.startProceduralMusic();
+      }
+
+      // Warm up real SFX buffers; absent files keep the procedural fallback.
+      for (const [name, url] of Object.entries(SFX_URLS) as Array<
+        [SfxName, string | undefined]
+      >) {
+        if (!url) continue;
+        const buffer = await loadAudioBuffer(this.context, url);
+        if (buffer) this.sfxBuffers.set(name, buffer);
+      }
+    } catch {
+      // Never let audio break the game; fall back to the procedural loop.
+      this.startProceduralMusic();
+    }
+  }
+
+  private startBufferLoop(buffer: AudioBuffer): void {
+    if (!this.context || !this.musicGain) return;
+    this.musicSource?.stop();
+    this.musicSource = this.context.createBufferSource();
+    this.musicSource.buffer = buffer;
+    this.musicSource.loop = true;
+    this.musicSource.connect(this.musicGain);
+    this.musicSource.start();
+  }
+
+  private startProceduralMusic(): void {
+    if (!this.context || !this.musicGain) return;
     const musicSampleRate = Math.min(this.context.sampleRate, 22050);
     const samples = buildMusicSamples(musicSampleRate);
-    const buffer = this.context.createBuffer(1, samples.length, musicSampleRate);
+    const buffer = this.context.createBuffer(
+      1,
+      samples.length,
+      musicSampleRate,
+    );
     buffer.getChannelData(0).set(samples);
     this.musicSource = this.context.createBufferSource();
     this.musicSource.buffer = buffer;
@@ -79,21 +204,37 @@ export class GameAudioManager {
 
   private play(name: SfxName): void {
     if (!this.context || !this.sfxGain || this.muted) return;
+
+    const buffer = this.sfxBuffers.get(name);
+    if (buffer) {
+      const source = this.context.createBufferSource();
+      source.buffer = buffer;
+      source.connect(this.sfxGain);
+      source.start();
+      return;
+    }
+
+    this.playProcedural(name);
+  }
+
+  private playProcedural(name: SfxName): void {
+    if (!this.context || !this.sfxGain) return;
     const now = this.context.currentTime;
-    const settings: Record<SfxName, [number, number, OscillatorType, number]> = {
-      jump: [420, 760, "sine", 0.16],
-      land: [150, 78, "triangle", 0.12],
-      coin: [880, 1320, "sine", 0.12],
-      hit: [120, 42, "sawtooth", 0.28],
-      power: [330, 990, "square", 0.32]
-    };
+    const settings: Record<SfxName, [number, number, OscillatorType, number]> =
+      {
+        jump: [420, 760, "sine", 0.16],
+        land: [150, 78, "triangle", 0.12],
+        coin: [880, 1320, "sine", 0.12],
+        hit: [120, 42, "sawtooth", 0.28],
+        power: [330, 990, "square", 0.32],
+      };
     const [from, to, type, duration] = settings[name];
     const oscillator = this.context.createOscillator();
     const envelope = this.context.createGain();
     oscillator.type = type;
     oscillator.frequency.setValueAtTime(from, now);
     oscillator.frequency.exponentialRampToValueAtTime(to, now + duration);
-    envelope.gain.setValueAtTime(name === "hit" ? 0.7 : 0.42, now);
+    envelope.gain.setValueAtTime(name === "hit" ? 0.5 : 0.38, now);
     envelope.gain.exponentialRampToValueAtTime(0.001, now + duration);
     oscillator.connect(envelope);
     envelope.connect(this.sfxGain);
@@ -102,9 +243,24 @@ export class GameAudioManager {
   }
 }
 
+async function loadAudioBuffer(
+  context: AudioContext,
+  url: string | undefined,
+): Promise<AudioBuffer | null> {
+  if (!url) return null;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const arrayBuffer = await response.arrayBuffer();
+    return await context.decodeAudioData(arrayBuffer);
+  } catch {
+    return null;
+  }
+}
+
 export function buildMusicSamples(
   sampleRate: number,
-  durationSeconds = MUSIC_LOOP_SECONDS
+  durationSeconds = MUSIC_LOOP_SECONDS,
 ): Float32Array {
   const safeRate = Math.max(8000, Math.floor(sampleRate));
   const length = safeRate * durationSeconds;
@@ -136,20 +292,19 @@ export function buildMusicSamples(
       : 0;
 
     const bassEnvelope = attack * Math.exp(-beatProgress * 2.4);
-    const bass =
-      Math.sin(2 * Math.PI * root * beatTime) * bassEnvelope;
+    const bass = Math.sin(2 * Math.PI * root * beatTime) * bassEnvelope;
 
     const whiteNoise = deterministicNoise(index);
     smoothedNoise += (whiteNoise - smoothedNoise) * 0.08;
     const highNoise = whiteNoise - smoothedNoise;
-    const snare = beatIndex % 4 === 1 || beatIndex % 4 === 3
-      ? highNoise * attack * Math.exp(-beatTime * 16)
-      : 0;
+    const snare =
+      beatIndex % 4 === 1 || beatIndex % 4 === 3
+        ? highNoise * attack * Math.exp(-beatTime * 16)
+        : 0;
 
     const halfBeatTime = time % (beatSeconds / 2);
     const hatAttack = 1 - Math.exp(-halfBeatTime * 180);
-    const hat =
-      highNoise * hatAttack * Math.exp(-halfBeatTime * 52);
+    const hat = highNoise * hatAttack * Math.exp(-halfBeatTime * 52);
 
     const padEnvelope = Math.sin(Math.PI * barProgress) ** 2;
     const third = chordThirds[rootIndex];

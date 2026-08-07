@@ -69,7 +69,7 @@ export abstract class TrackChunk {
     const thickness = CFG.trackThickness;
 
     // Road surface
-    const matTrack = materials.createMaterial("track.surface", "#3D3A40");
+    const matTrack = materials.createMaterial("track.surface", "#4A4E5A");
     const surface = MeshBuilder.CreateGround(
       "track-surface",
       { width: CFG.trackWidth, height: len + 0.06, subdivisions: 2 },
@@ -144,7 +144,7 @@ export abstract class TrackChunk {
     }
 
     // Rooftop base slabs (outside the track, props live on these)
-    const matRoof = materials.createMaterial("rooftop.surface", "#615D66");
+    const matRoof = materials.createMaterial("rooftop.surface", "#6A7082");
     for (const side of [-1, 1] as const) {
       const roof = MeshBuilder.CreateGround(
         "rooftop-base",

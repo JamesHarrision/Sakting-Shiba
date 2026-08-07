@@ -3,6 +3,7 @@ import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import type { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import type { MaterialsRegistry } from "../../assets/MaterialsRegistry";
 import { LANE_X_POSITIONS } from "../../config/gameplay/gameplayConfig";
 import { RUN_SPEED_CONFIG } from "../../config/gameplay/runSpeedConfig";
@@ -79,6 +80,7 @@ export class TrackManager {
   private readonly obstaclePool: SpawnItemPool;
   private readonly obstacleWarningPool: SpawnItemPool;
   private readonly pickupPools: Readonly<Record<CollectibleItemType, SpawnItemPool>>;
+  private readonly markerMaterials: Record<ObstacleItemType, StandardMaterial>;
   private readonly activeItems: ActiveSpawnItem[] = [];
 
   private readonly chunkLength = CFG.trackChunkLength;
@@ -124,6 +126,13 @@ export class TrackManager {
     );
     obstacleWarningMat.emissiveColor = obstacleWarningMat.diffuseColor.scale(0.7);
     obstacleWarningMat.disableLighting = true;
+
+    // Per-type ground markers give an instant jump / crouch / dodge cue
+    this.markerMaterials = {
+      obstacle_box: this.createMarkerMaterial(materials, "spawn.marker-jump", OBSTACLE_RULES.obstacle_box.markerColor),
+      obstacle_fence: this.createMarkerMaterial(materials, "spawn.marker-crouch", OBSTACLE_RULES.obstacle_fence.markerColor),
+      obstacle_dumpster: this.createMarkerMaterial(materials, "spawn.marker-dodge", OBSTACLE_RULES.obstacle_dumpster.markerColor)
+    };
 
     this.obstaclePool = new SpawnItemPool(scene, 16, () => {
       const mesh = MeshBuilder.CreateBox(
@@ -373,6 +382,17 @@ export class TrackManager {
     }
   }
 
+  private createMarkerMaterial(
+    materials: MaterialsRegistry,
+    key: string,
+    hexColor: string
+  ): StandardMaterial {
+    const material = materials.createMaterial(key, hexColor, 0.88);
+    material.emissiveColor = material.diffuseColor.scale(0.7);
+    material.disableLighting = true;
+    return material;
+  }
+
   private recycleSpawnItems(): void {
     for (let i = this.activeItems.length - 1; i >= 0; i--) {
       const entry = this.activeItems[i];
@@ -403,6 +423,7 @@ export class TrackManager {
       ),
       this.reuseScale.set(rule.width * 1.22, 1, 1)
     );
+    if (warning) warning.material = this.markerMaterials[type];
     if (!warning) this.warnPoolExhausted("obstacle warning");
     const releaseWarning = (): void => {
       if (warning) this.obstacleWarningPool.release(warning);

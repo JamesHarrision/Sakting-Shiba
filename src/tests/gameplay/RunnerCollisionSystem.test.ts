@@ -56,22 +56,18 @@ describe("RunnerCollisionSystem", () => {
     ).toBeNull();
   });
 
-  it("allows a lane dodge or a high jump over a dumpster", () => {
+  it("allows only a lane dodge over a dumpster (jumping never clears it)", () => {
     const system = new RunnerCollisionSystem();
     expect(system.update(STANDING_PLAYER, [item("obstacle_dumpster")]).obstacleHit)
       .not.toBeNull();
-    expect(
-      system.update(
-        { ...STANDING_PLAYER, centerY: 2.2 },
-        [item("obstacle_dumpster")]
-      ).obstacleHit
-    ).not.toBeNull();
+    // Even a high jump cannot clear the dumpster
     expect(
       system.update(
         { ...STANDING_PLAYER, centerY: 2.55 },
         [item("obstacle_dumpster")]
       ).obstacleHit
-    ).toBeNull();
+    ).not.toBeNull();
+    // Switching lanes is the only way through
     expect(
       system.update(STANDING_PLAYER, [
         item("obstacle_dumpster", { centerX: 2.4, lane: 2 })

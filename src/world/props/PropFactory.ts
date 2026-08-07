@@ -1,4 +1,5 @@
-import type { Scene } from "@babylonjs/core/scene";
+﻿import type { Scene } from "@babylonjs/core/scene";
+import { AbstractMesh } from "@babylonjs/core/Meshes/abstractMesh";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import type { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
@@ -99,6 +100,22 @@ export class PropFactory {
       root.parent = instanceRoot;
     }
 
+    // Hide meshes the artist wants removed (e.g. cone.glb's grey base plate)
+    if (entry.hiddenMeshPattern) {
+      const pattern = new RegExp(entry.hiddenMeshPattern);
+      for (const root of result.rootNodes) {
+        const descendants = root.getDescendants(
+          false,
+          (node) => node instanceof AbstractMesh
+        ) as AbstractMesh[];
+        for (const mesh of descendants) {
+          if (pattern.test(mesh.name)) {
+            mesh.dispose();
+          }
+        }
+      }
+    }
+
     return {
       dispose: () => instanceRoot.dispose()
     };
@@ -152,7 +169,7 @@ export class PropFactory {
             { width: w * 0.45, height: 0.32, depth: depth * 0.55 },
             this.scene
           );
-          cap.material = this.materials.createMaterial("rooftop.prop", "#484550");
+          cap.material = this.materials.createMaterial("rooftop.prop", "#5A6070");
           push(cap, h + 0.16);
         }
         break;
@@ -214,7 +231,7 @@ export class PropFactory {
           { width: s, height: s, depth: s },
           this.scene
         );
-        box.material = this.materials.createMaterial("prop.box", "#6A5A4A");
+        box.material = this.materials.createMaterial("prop.box", "#8A7A5E");
         push(box, s / 2);
         break;
       }
@@ -296,7 +313,7 @@ export class PropFactory {
           { width: 0.55, height: 0.45, depth: 0.5 },
           this.scene
         );
-        v.material = this.materials.createMaterial("rooftop.prop", "#484550");
+        v.material = this.materials.createMaterial("rooftop.prop", "#5A6070");
         push(v, 0.25);
         break;
       }
@@ -306,7 +323,7 @@ export class PropFactory {
           { width: 0.45, height: 0.35, depth: 0.7 },
           this.scene
         );
-        ac.material = this.materials.createMaterial("rooftop.prop", "#484550");
+        ac.material = this.materials.createMaterial("rooftop.prop", "#5A6070");
         push(ac, 0.18);
         break;
       }
@@ -316,7 +333,7 @@ export class PropFactory {
           { diameter: 0.12, height: 0.7 + rand() * 0.5, tessellation: 8 },
           this.scene
         );
-        pipe.material = this.materials.createMaterial("rooftop.prop", "#484550");
+        pipe.material = this.materials.createMaterial("rooftop.prop", "#5A6070");
         push(pipe, 0.35);
         break;
       }
@@ -326,7 +343,7 @@ export class PropFactory {
           { diameter: 0.04, height: 1.1 + rand() * 0.8, tessellation: 6 },
           this.scene
         );
-        ant.material = this.materials.createMaterial("rooftop.prop", "#484550");
+        ant.material = this.materials.createMaterial("rooftop.prop", "#5A6070");
         push(ant, 0.6);
         break;
       }
@@ -346,7 +363,7 @@ export class PropFactory {
           { width: 0.5, height: 0.3, depth: 1.4 },
           this.scene
         );
-        b.material = this.materials.createMaterial("rooftop.prop", "#484550");
+        b.material = this.materials.createMaterial("rooftop.prop", "#5A6070");
         push(b, 0.15);
         break;
       }

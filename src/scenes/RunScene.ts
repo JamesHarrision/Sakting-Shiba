@@ -87,6 +87,7 @@ export class RunScene {
     this.playerRig.applyGameplayState(playerSnap, colliderSnap);
     this.playerVisual.applySnapshot(playerSnap);
     this.playerVisual.update(deltaSeconds);
+    this.worldController.lighting.updateClouds(deltaSeconds);
     this.worldController.update(deltaSeconds, speed);
 
     this.cameraController.update(deltaSeconds, {
@@ -138,8 +139,25 @@ export class RunScene {
     return this.worldController.trackManager;
   }
 
-  applyCosmetics(catColor: string, boardColor: string): void {
-    this.playerVisual.applyCosmetics(catColor, boardColor);
+  applyCosmetics(
+    dogId: string,
+    boardId: string,
+    hatId: string,
+    dogColor: string,
+    boardColor: string
+  ): void {
+    this.playerVisual.applyCosmetics(
+      dogId,
+      boardId,
+      hatId,
+      dogColor,
+      boardColor
+    );
+  }
+
+  /** 0..1 scene brightness (settings slider). */
+  setBrightness(factor: number): void {
+    this.worldController.lighting.setBrightness(factor);
   }
 
   addCameraImpact(amount: number): void {

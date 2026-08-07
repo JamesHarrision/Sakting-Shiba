@@ -46,6 +46,8 @@ export interface PropAssetEntry {
   readonly mergeMeshes?: boolean;
   /** Extra distance from the road center, applied away from the lane area. */
   readonly lateralOffset?: number;
+  /** Regex over mesh names; matching cloned meshes are hidden (e.g. cone base). */
+  readonly hiddenMeshPattern?: string;
   /** Applied to the GLB instance; unused for procedural builders. */
   readonly calibration: PropCalibration;
 }
@@ -124,7 +126,7 @@ export const PROP_ASSETS: readonly PropAssetEntry[] = [
     calibration: {
       position: { x: 0, y: 0, z: 0 },
       rotationDegrees: { x: 0, y: 0, z: 0 },
-      scale: 2.76,
+      scale: 4.5,
     },
   },
   {

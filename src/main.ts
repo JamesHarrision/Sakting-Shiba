@@ -12,6 +12,7 @@ import "@babylonjs/core/Shaders/rgbdEncode.fragment";
 
 import { PlayerAssetLoader } from "./assets/PlayerAssetLoader";
 import { GameAudioManager } from "./audio/GameAudioManager";
+import { CosmeticThumbnailService } from "./player/cosmetics/CosmeticThumbnailService";
 import { WORLD_VISUAL_CONFIG } from "./config/visual/world-visual.config";
 import {
   getCosmetic,
@@ -43,7 +44,7 @@ import { GameUiController } from "./ui/GameUiController";
 import { GameFeelController } from "./ui/GameFeelController";
 import "./style.css";
 
-type AppMode = "loading" | "menu" | "countdown" | "running" | "paused" | "gameover" | "store";
+type AppMode = "loading" | "menu" | "countdown" | "running" | "paused" | "gameover" | "store" | "settings";
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game-canvas");
 if (!canvas) throw new Error("Game canvas was not found.");
@@ -79,6 +80,10 @@ const gameFeel = new GameFeelController(eventBus, (amount) =>
 
 let appMode: AppMode = "loading";
 let storeReturnMode: AppMode = "menu";
+let settingsReturnMode: AppMode = "menu";
+let musicVolume = 1;
+let sfxVolume = 1;
+let brightness = 1;
 let countdownRemaining = 0;
 let displayedCountdown = -1;
 let startWithTutorial = false;
@@ -129,6 +134,20 @@ ui = new GameUiController({
     audio.setMuted(!audio.isMuted);
     ui.setAudioMuted(audio.isMuted);
   },
+  onOpenSettings: () => openSettings(),
+  onCloseSettings: () => closeSettings(),
+  onMusicVolume: (volume) => {
+    musicVolume = volume;
+    audio.setMusicVolume(volume);
+  },
+  onSfxVolume: (volume) => {
+    sfxVolume = volume;
+    audio.setSfxVolume(volume);
+  },
+  onBrightness: (factor) => {
+    brightness = factor;
+    runScene.setBrightness(factor);
+  },
   onInput: (action) => keyboardInput.queueAction(action)
 });
 
@@ -137,6 +156,13 @@ clock.pause();
 runStateStore.startRun();
 applyEquippedCosmetics();
 ui.showLoading();
+// Render real mini images of the cosmetic models for the store
+void new CosmeticThumbnailService()
+  .generateAll()
+  .then((thumbnails) => ui.setCosmeticThumbnails(thumbnails))
+  .catch(() => {
+    /* store falls back to color swatches */
+  });
 void runScene.startAssetLoad()
   .catch((error) => {
     console.warn("[ShibaSkating] Optional asset load failed; using fallbacks.", error);
@@ -385,6 +411,31 @@ function openStore(): void {
   ui.showStore(profileStore.getSnapshot());
 }
 
+function openSettings(): void {
+  settingsReturnMode = appMode;
+  if (appMode === "running") pauseRun();
+  appMode = "settings";
+  clock.pause();
+  runGameplay.pause();
+  powerUps.pause();
+  audio.setPaused(true);
+  ui.showSettings(musicVolume, sfxVolume, brightness);
+}
+
+function closeSettings(): void {
+  if (settingsReturnMode === "gameover") {
+    appMode = "gameover";
+    ui.showGameOver(
+      runStateStore.getSnapshot(),
+      profileStore.getSnapshot(),
+      lastObstacleHit,
+      lastRunRecord
+    );
+  } else {
+    showMainMenu();
+  }
+}
+
 function closeStore(): void {
   if (storeReturnMode === "gameover") {
     appMode = "gameover";
@@ -415,7 +466,10 @@ function handleCosmeticAction(item: CosmeticItem): void {
 function applyEquippedCosmetics(): void {
   const profile = profileStore.getSnapshot();
   runScene.applyCosmetics(
-    getCosmetic(profile.equippedCat).color,
+    profile.equippedDog,
+    profile.equippedBoard,
+    profile.equippedHat,
+    getCosmetic(profile.equippedDog).color,
     getCosmetic(profile.equippedBoard).color
   );
 }
