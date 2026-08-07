@@ -28,8 +28,15 @@ export interface CosmeticOverride {
  */
 export const COSMETIC_OVERRIDES: Readonly<Record<string, CosmeticOverride>> =
   Object.freeze({
-    // "dog.calico":   { position: [0, 0.05, 0], scale: 0.95 },
-    // "dog.midnight": { position: [0, 0, 0.05], scale: 1.02 },
+    // Dogs — adjust position[1] (Y) up/down to make feet touch the board.
+    // Negative Y = lower (if dog floats above board).
+    // Positive Y = higher (if dog sinks into board).
+    "dog.calico":   { position: [0, -0.04, -0.06] },
+    "dog.midnight": { position: [0, 0.02, 0] },
+    // Boards — tweak scale or Z to make the board visible.
     // "board.mint":   { scale: 1.05 },
-    // "hat.snapback": { rotation: [0, 15, 0] },  // tilt 15° right
+    // "board.comet":  { scale: 1.02 },
+    // Hats — rotate or reposition.
+    // "hat.snapback":    { position: [0, 0.02, 0], rotation: [0, 0, 0] },
+    // "hat.headphones":  { position: [0, 0.05, 0], scale: 0.95 },
   });
