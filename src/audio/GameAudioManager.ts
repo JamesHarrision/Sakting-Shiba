@@ -41,7 +41,7 @@ export class GameAudioManager {
   setPaused(paused: boolean): void {
     this.paused = paused;
     if (!this.context || !this.musicGain) return;
-    this.musicGain.gain.setTargetAtTime(paused ? 0 : 0.14, this.context.currentTime, 0.12);
+    this.musicGain.gain.setTargetAtTime(paused ? 0 : 0.16, this.context.currentTime, 0.12);
   }
 
   dispose(): void {
@@ -93,7 +93,7 @@ export class GameAudioManager {
     oscillator.type = type;
     oscillator.frequency.setValueAtTime(from, now);
     oscillator.frequency.exponentialRampToValueAtTime(to, now + duration);
-    envelope.gain.setValueAtTime(name === "hit" ? 0.7 : 0.42, now);
+    envelope.gain.setValueAtTime(name === "hit" ? 0.5 : 0.38, now);
     envelope.gain.exponentialRampToValueAtTime(0.001, now + duration);
     oscillator.connect(envelope);
     envelope.connect(this.sfxGain);
