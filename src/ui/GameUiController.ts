@@ -22,7 +22,7 @@ const POWER_UP_LABELS: Readonly<Record<string, string>> = Object.freeze({
 const CATEGORY_LABELS: Readonly<Record<CosmeticCategory, string>> =
   Object.freeze({
     hat: "Hats",
-    dog: "Dogs",
+    dog: "Shiba skins",
     board: "Skateboards",
   });
 
@@ -271,27 +271,9 @@ export class GameUiController {
   private renderStore(): void {
     const profile = this.storeProfile;
     if (!profile) return;
-    const activeItems = getCosmeticsForCategory(this.storeActiveCategory);
-    const activeIndex = this.clampIndex(
-      this.storeIndex[this.storeActiveCategory],
-      activeItems.length,
-    );
-    const activeItem = activeItems[activeIndex];
-
     const rows = COSMETIC_CATEGORIES.map((category) =>
       this.renderStoreRow(category, profile),
     ).join("");
-    const equipped = this.isEquipped(
-      this.storeActiveCategory,
-      activeItem.id,
-      profile,
-    );
-    const owned = profile.ownedCosmetics.includes(activeItem.id);
-    const buyLabel = equipped
-      ? "Equipped"
-      : owned
-        ? "Equip"
-        : `Unlock · ${activeItem.price}`;
 
     this.overlay.innerHTML = `
       <section class="store-screen">
@@ -301,7 +283,6 @@ export class GameUiController {
         </header>
         <p class="store-feedback" aria-live="polite">${this.storeFeedback}</p>
         <div class="store-rows">${rows}</div>
-        <button class="primary-command store-buy" data-cosmetic="${activeItem.id}" ${equipped ? "disabled" : ""}>${buyLabel}</button>
         <button class="secondary-command store-close" data-action="close-store">Back</button>
       </section>`;
   }
@@ -325,7 +306,20 @@ export class GameUiController {
     const thumbnail = this.cosmeticThumbnails[item.id];
     const preview = thumbnail
       ? `<img class="store-row-img" src="${thumbnail}" alt="${item.name}" />`
-      : `<span class="store-row-swatch" style="--swatch:${item.color};--accent:${item.accent}"></span>`;
+      : `<span class="store-row-swatch store-row-swatch-${category}" style="--swatch:${item.color};--accent:${item.accent}"></span>`;
+    const actionLabel = equipped
+      ? category === "hat"
+        ? "Hat equipped"
+        : category === "dog"
+          ? "Skin equipped"
+          : "Board equipped"
+      : owned
+        ? category === "hat"
+          ? "Equip hat"
+          : category === "dog"
+            ? "Equip skin"
+            : "Equip board"
+        : `Unlock · ${item.price}`;
 
     return `
       <section class="store-row ${category === this.storeActiveCategory ? "is-active" : ""}" data-category="${category}">
@@ -337,6 +331,7 @@ export class GameUiController {
           <span class="${equipped ? "is-equipped" : ""}">${status}</span>
         </div>
         <button class="store-arrow" data-browse="${category}" data-dir="1" aria-label="Next ${CATEGORY_LABELS[category]}">▶</button>
+        <button class="store-row-action" data-cosmetic="${item.id}" ${equipped ? "disabled" : ""}>${actionLabel}</button>
       </section>`;
   }
 

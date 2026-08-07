@@ -81,7 +81,15 @@ export class PlayerVisualController {
     this.cosmeticLayer = new CosmeticModelLayer(
       scene,
       playerRig.nodes.catMount,
-      playerRig.nodes.boardMount
+      playerRig.nodes.boardMount,
+      () =>
+        this.applyCosmetics(
+          this.dogId,
+          this.boardId,
+          this.hatId,
+          this.catColor,
+          this.boardColor
+        )
     );
 
     this.blobShadow = new PlayerBlobShadow(scene, playerRig.nodes.shadowAnchor);
@@ -112,21 +120,15 @@ export class PlayerVisualController {
         this.player.setEnabled(true);
         this.playerRig.setVisualLoadState("fallback");
       }
-      // Cosmetic models load in the background; apply them when ready so the
-      // loading screen never waits on large downloads.
-      void this.cosmeticLayer.preloadAll().then(() => {
-        if (this.disposed) return;
-        if (!fullyLoaded) {
-          this.cosmeticLayer.setAllEnabled(false);
-        }
-        this.applyCosmetics(
-          this.dogId,
-          this.boardId,
-          this.hatId,
-          this.catColor,
-          this.boardColor
-        );
-      });
+      // Cosmetic models load on demand so oversized optional skins never block
+      // the first run. The selected model is applied again when its GLB arrives.
+      this.applyCosmetics(
+        this.dogId,
+        this.boardId,
+        this.hatId,
+        this.catColor,
+        this.boardColor
+      );
     });
 
     return this.modelLoadPromise;

@@ -665,7 +665,7 @@ button:focus-visible {
 
 .store-row {
   display: grid;
-  grid-template-columns: 96px 44px 1fr 44px;
+  grid-template-columns: 104px 44px minmax(0, 1fr) 44px minmax(140px, 180px);
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
@@ -712,6 +712,7 @@ button:focus-visible {
   grid-template-columns: 74px 1fr;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .store-row-swatch,
@@ -723,7 +724,70 @@ button:focus-visible {
 }
 
 .store-row-swatch {
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(135deg, var(--swatch), var(--accent));
+}
+
+.store-row-swatch::before,
+.store-row-swatch::after {
+  position: absolute;
+  display: block;
+  content: "";
+}
+
+.store-row-swatch-hat::before {
+  left: 13px;
+  top: 25px;
+  width: 36px;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(17, 20, 25, 0.72);
+}
+
+.store-row-swatch-hat::after {
+  left: 20px;
+  top: 15px;
+  width: 22px;
+  height: 17px;
+  border-radius: 12px 12px 4px 4px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.store-row-swatch-dog::before {
+  left: 14px;
+  top: 18px;
+  width: 34px;
+  height: 28px;
+  border-radius: 18px 18px 14px 14px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.store-row-swatch-dog::after {
+  left: 20px;
+  top: 12px;
+  width: 22px;
+  height: 16px;
+  clip-path: polygon(0 100%, 20% 0, 48% 85%, 80% 0, 100% 100%);
+  background: rgba(17, 20, 25, 0.65);
+}
+
+.store-row-swatch-board::before {
+  left: 11px;
+  top: 27px;
+  width: 40px;
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.store-row-swatch-board::after {
+  left: 16px;
+  top: 40px;
+  width: 30px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(17, 20, 25, 0.62);
 }
 
 .store-row-display p {
@@ -749,6 +813,24 @@ button:focus-visible {
 }
 
 .store-buy:disabled {
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--mint);
+  cursor: default;
+  transform: none;
+}
+
+.store-row-action {
+  min-height: 46px;
+  width: 100%;
+  justify-content: center;
+  padding: 0 12px;
+  border: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.store-row-action:disabled {
   background: rgba(255, 255, 255, 0.14);
   color: var(--mint);
   cursor: default;
@@ -920,6 +1002,12 @@ button:focus-visible {
   .store-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .store-row {
+    grid-template-columns: 88px 40px minmax(0, 1fr) 40px;
+  }
+  .store-row-action {
+    grid-column: 3 / 5;
+  }
   .tutorial-callout {
     top: 76px;
     max-width: calc(100vw - 24px);
@@ -941,6 +1029,19 @@ button:focus-visible {
   }
   .store-screen h2 {
     font-size: 42px;
+  }
+  .store-row {
+    grid-template-columns: 1fr 40px 40px;
+  }
+  .store-row-label {
+    grid-column: 1 / -1;
+  }
+  .store-row-display {
+    grid-column: 1 / -1;
+    grid-template-columns: 62px minmax(0, 1fr);
+  }
+  .store-row-action {
+    grid-column: 1 / -1;
   }
   .menu-actions {
     align-items: stretch;
