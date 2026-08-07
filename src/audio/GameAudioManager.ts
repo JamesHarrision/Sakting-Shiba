@@ -12,7 +12,7 @@ export const MUSIC_LOOP_SECONDS = 20;
 const AUDIO_URLS = import.meta.glob("/src/assets/audio/**/*.{ogg,mp3,m4a}", {
   query: "?url",
   import: "default",
-  eager: true
+  eager: true,
 }) as Record<string, string>;
 
 const MUSIC_URL = findAudio(AUDIO_URLS, "music");
@@ -20,11 +20,14 @@ const SFX_URLS: Readonly<Partial<Record<SfxName, string>>> = Object.freeze({
   jump: findAudio(AUDIO_URLS, "jump"),
   coin: findAudio(AUDIO_URLS, "coin"),
   hit: findAudio(AUDIO_URLS, "hurt") ?? findAudio(AUDIO_URLS, "hit"),
-  power: findAudio(AUDIO_URLS, "power")
+  power: findAudio(AUDIO_URLS, "power"),
   // land: no file provided -> procedural blip
 });
 
-function findAudio(urls: Record<string, string>, baseName: string): string | undefined {
+function findAudio(
+  urls: Record<string, string>,
+  baseName: string,
+): string | undefined {
   const key = Object.keys(urls).find((k) => {
     const file = k.slice(k.lastIndexOf("/") + 1).toLowerCase();
     return file.startsWith(baseName);
@@ -45,7 +48,7 @@ export class GameAudioManager {
   /** 0..1 settings-slider values; scaled by the base gain below. */
   private musicVolume = 1;
   private sfxVolume = 1;
-  private static readonly MUSIC_BASE_GAIN = 0.28;
+  private static readonly MUSIC_BASE_GAIN = 1;
   private static readonly SFX_BASE_GAIN = 0.3;
   private readonly unsubscribe: Array<() => void> = [];
 
@@ -55,7 +58,7 @@ export class GameAudioManager {
       eventBus.on("PLAYER_LANDED", () => this.play("land")),
       eventBus.on("COIN_COLLECTED", () => this.play("coin")),
       eventBus.on("PLAYER_HIT", () => this.play("hit")),
-      eventBus.on("POWERUP_ACTIVATED", () => this.play("power"))
+      eventBus.on("POWERUP_ACTIVATED", () => this.play("power")),
     );
   }
 
@@ -82,7 +85,11 @@ export class GameAudioManager {
   setMuted(muted: boolean): void {
     this.muted = muted;
     if (!this.context || !this.master) return;
-    this.master.gain.setTargetAtTime(muted ? 0 : 0.78, this.context.currentTime, 0.025);
+    this.master.gain.setTargetAtTime(
+      muted ? 0 : 0.78,
+      this.context.currentTime,
+      0.025,
+    );
   }
 
   setPaused(paused: boolean): void {
@@ -91,7 +98,7 @@ export class GameAudioManager {
     this.musicGain.gain.setTargetAtTime(
       paused ? 0 : this.musicVolume * GameAudioManager.MUSIC_BASE_GAIN,
       this.context.currentTime,
-      0.12
+      0.12,
     );
   }
 
@@ -102,7 +109,7 @@ export class GameAudioManager {
     this.musicGain.gain.setTargetAtTime(
       this.paused ? 0 : this.musicVolume * GameAudioManager.MUSIC_BASE_GAIN,
       this.context.currentTime,
-      0.06
+      0.06,
     );
   }
 
@@ -113,7 +120,7 @@ export class GameAudioManager {
     this.sfxGain.gain.setTargetAtTime(
       this.sfxVolume * GameAudioManager.SFX_BASE_GAIN,
       this.context.currentTime,
-      0.06
+      0.06,
     );
   }
 
@@ -128,15 +135,18 @@ export class GameAudioManager {
   private async initialize(): Promise<void> {
     try {
       const AudioContextCtor =
-        window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        window.AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
       if (!AudioContextCtor) return;
       this.context = new AudioContextCtor();
       this.master = this.context.createGain();
       this.musicGain = this.context.createGain();
       this.sfxGain = this.context.createGain();
       this.master.gain.value = this.muted ? 0 : 0.78;
-      this.musicGain.gain.value =
-        this.paused ? 0 : this.musicVolume * GameAudioManager.MUSIC_BASE_GAIN;
+      this.musicGain.gain.value = this.paused
+        ? 0
+        : this.musicVolume * GameAudioManager.MUSIC_BASE_GAIN;
       this.sfxGain.gain.value = this.sfxVolume * GameAudioManager.SFX_BASE_GAIN;
       this.musicGain.connect(this.master);
       this.sfxGain.connect(this.master);
@@ -152,7 +162,9 @@ export class GameAudioManager {
       }
 
       // Warm up real SFX buffers; absent files keep the procedural fallback.
-      for (const [name, url] of Object.entries(SFX_URLS) as Array<[SfxName, string | undefined]>) {
+      for (const [name, url] of Object.entries(SFX_URLS) as Array<
+        [SfxName, string | undefined]
+      >) {
         if (!url) continue;
         const buffer = await loadAudioBuffer(this.context, url);
         if (buffer) this.sfxBuffers.set(name, buffer);
@@ -177,7 +189,11 @@ export class GameAudioManager {
     if (!this.context || !this.musicGain) return;
     const musicSampleRate = Math.min(this.context.sampleRate, 22050);
     const samples = buildMusicSamples(musicSampleRate);
-    const buffer = this.context.createBuffer(1, samples.length, musicSampleRate);
+    const buffer = this.context.createBuffer(
+      1,
+      samples.length,
+      musicSampleRate,
+    );
     buffer.getChannelData(0).set(samples);
     this.musicSource = this.context.createBufferSource();
     this.musicSource.buffer = buffer;
@@ -204,13 +220,14 @@ export class GameAudioManager {
   private playProcedural(name: SfxName): void {
     if (!this.context || !this.sfxGain) return;
     const now = this.context.currentTime;
-    const settings: Record<SfxName, [number, number, OscillatorType, number]> = {
-      jump: [420, 760, "sine", 0.16],
-      land: [150, 78, "triangle", 0.12],
-      coin: [880, 1320, "sine", 0.12],
-      hit: [120, 42, "sawtooth", 0.28],
-      power: [330, 990, "square", 0.32]
-    };
+    const settings: Record<SfxName, [number, number, OscillatorType, number]> =
+      {
+        jump: [420, 760, "sine", 0.16],
+        land: [150, 78, "triangle", 0.12],
+        coin: [880, 1320, "sine", 0.12],
+        hit: [120, 42, "sawtooth", 0.28],
+        power: [330, 990, "square", 0.32],
+      };
     const [from, to, type, duration] = settings[name];
     const oscillator = this.context.createOscillator();
     const envelope = this.context.createGain();
@@ -228,7 +245,7 @@ export class GameAudioManager {
 
 async function loadAudioBuffer(
   context: AudioContext,
-  url: string | undefined
+  url: string | undefined,
 ): Promise<AudioBuffer | null> {
   if (!url) return null;
   try {
@@ -243,7 +260,7 @@ async function loadAudioBuffer(
 
 export function buildMusicSamples(
   sampleRate: number,
-  durationSeconds = MUSIC_LOOP_SECONDS
+  durationSeconds = MUSIC_LOOP_SECONDS,
 ): Float32Array {
   const safeRate = Math.max(8000, Math.floor(sampleRate));
   const length = safeRate * durationSeconds;
@@ -275,20 +292,19 @@ export function buildMusicSamples(
       : 0;
 
     const bassEnvelope = attack * Math.exp(-beatProgress * 2.4);
-    const bass =
-      Math.sin(2 * Math.PI * root * beatTime) * bassEnvelope;
+    const bass = Math.sin(2 * Math.PI * root * beatTime) * bassEnvelope;
 
     const whiteNoise = deterministicNoise(index);
     smoothedNoise += (whiteNoise - smoothedNoise) * 0.08;
     const highNoise = whiteNoise - smoothedNoise;
-    const snare = beatIndex % 4 === 1 || beatIndex % 4 === 3
-      ? highNoise * attack * Math.exp(-beatTime * 16)
-      : 0;
+    const snare =
+      beatIndex % 4 === 1 || beatIndex % 4 === 3
+        ? highNoise * attack * Math.exp(-beatTime * 16)
+        : 0;
 
     const halfBeatTime = time % (beatSeconds / 2);
     const hatAttack = 1 - Math.exp(-halfBeatTime * 180);
-    const hat =
-      highNoise * hatAttack * Math.exp(-halfBeatTime * 52);
+    const hat = highNoise * hatAttack * Math.exp(-halfBeatTime * 52);
 
     const padEnvelope = Math.sin(Math.PI * barProgress) ** 2;
     const third = chordThirds[rootIndex];

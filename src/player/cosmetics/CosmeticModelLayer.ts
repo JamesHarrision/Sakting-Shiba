@@ -5,16 +5,19 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { SceneLoader } from "@babylonjs/core/Loading/sceneLoader";
 import type { AssetContainer } from "@babylonjs/core/assetContainer";
 import { ensureGltfLoader } from "../../assets/registerGltfLoader";
-import {
-  COSMETICS,
-  type CosmeticFit,
-  type CosmeticItem
-} from "../../config/visual/cosmeticsConfig";
+import { COSMETICS, type CosmeticItem } from "../../config/visual/cosmeticsConfig";
+import { PLAYER_MODEL_CONFIG } from "../../config/visual/player-model.config";
 
-/** catFootOffset from the default player config: board deck -> mounting point. */
-const CAT_FOOT_OFFSET = 0.657;
+/**
+ * Identical calibration to the default player models so every cosmetic dog/board
+ * lands in exactly the same spot as the built-in cat + skateboard.
+ */
+const DOG_SCALE = PLAYER_MODEL_CONFIG.cat.scale;
+const DOG_POS_Y = PLAYER_MODEL_CONFIG.cat.position.y - PLAYER_MODEL_CONFIG.catSeatHeight;
+const BOARD_SCALE = PLAYER_MODEL_CONFIG.skateboard.scale;
+const BOARD_ROT_Y =
+  (PLAYER_MODEL_CONFIG.skateboard.rotationDegrees.y * Math.PI) / 180;
 
-/** Hashed URLs of the cosmetic models under src/assets (built from glob). */
 const SRC_MODEL_URLS = import.meta.glob("/src/assets/models/player/*.glb", {
   query: "?url",
   import: "default",
@@ -38,12 +41,11 @@ export interface CosmeticEquipResult {
   readonly showDefaultHat: boolean;
 }
 
-/**
- * Loads the real cosmetic GLBs (hats, dogs, boards) and swaps the equipped one
- * into the player rig. Every model is auto-scaled to its fit target and
- * positioned so the dog's feet rest on the board deck, the board runs along
- * the track (Z), and the hat sits on the dog's head.
- */
+/** Only non-default GLB models are swapped in; the defaults stay as the built-in assets. */
+function isNonDefault(item: CosmeticItem): boolean {
+  return !item.id.endsWith(".default");
+}
+
 export class CosmeticModelLayer {
   private readonly containers = new Map<string, AssetContainer>();
   private readonly instances = new Map<string, CosmeticInstance>();
@@ -64,7 +66,7 @@ export class CosmeticModelLayer {
     if (this.loaded) return;
     await ensureGltfLoader();
     for (const item of COSMETICS) {
-      await this.preload(item);
+      if (isNonDefault(item)) await this.preload(item);
     }
     this.loaded = true;
   }
@@ -87,18 +89,20 @@ export class CosmeticModelLayer {
     for (const instance of this.instances.values()) {
       instance.root.setEnabled(false);
     }
-    this.instantiateIfNeeded(dogItem, this.dogMount, "dog");
-    this.instantiateIfNeeded(boardItem, this.boardMount, "board");
-    this.instantiateIfNeeded(hatItem, this.hatMount, "hat");
+
+    if (isNonDefault(dogItem)) this.instantiateDog(dogItem);
+    if (isNonDefault(boardItem)) this.instantiateBoard(boardItem);
+    if (isNonDefault(hatItem)) this.instantiateHat(hatItem);
 
     this.instances.get(dogItem.id)?.root.setEnabled(true);
     this.instances.get(boardItem.id)?.root.setEnabled(true);
     this.instances.get(hatItem.id)?.root.setEnabled(true);
 
     return {
-      showDefaultDog: !this.instances.has(dogItem.id),
-      showDefaultBoard: !this.instances.has(boardItem.id),
-      showDefaultHat: !this.instances.has(hatItem.id)
+      showDefaultDog: !isNonDefault(dogItem) || !this.instances.has(dogItem.id),
+      showDefaultBoard:
+        !isNonDefault(boardItem) || !this.instances.has(boardItem.id),
+      showDefaultHat: !isNonDefault(hatItem) || !this.instances.has(hatItem.id)
     };
   }
 
@@ -125,14 +129,18 @@ export class CosmeticModelLayer {
       container.removeAllFromScene();
       this.containers.set(item.id, container);
     } catch {
-      // Missing/broken model -> item keeps the color-swatch fallback
+      // Missing/broken model
     }
   }
 
-  private instantiateIfNeeded(
+  private instantiate(
     item: CosmeticItem,
     parent: TransformNode,
-    kind: "dog" | "board" | "hat"
+    scale: number,
+    posX: number,
+    posY: number,
+    posZ: number,
+    rotY: number
   ): void {
     if (this.instances.has(item.id)) return;
     const container = this.containers.get(item.id);
@@ -141,6 +149,9 @@ export class CosmeticModelLayer {
     try {
       const root = new TransformNode(`cosmetic-${item.id}`, this.scene);
       root.parent = parent;
+      root.position.set(posX, posY, posZ);
+      root.rotation.y = rotY;
+      root.scaling.setAll(scale);
 
       const result = container.instantiateModelsToScene(
         (name) => `cosm-${item.id}-${name}`
@@ -153,7 +164,14 @@ export class CosmeticModelLayer {
         (node) => node instanceof AbstractMesh
       ) as AbstractMesh[];
 
-      this.fitToTarget(root, meshes, item.fit, kind);
+      // Center the imported hierarchy at the root's origin so the scale
+      // and position from the calibration are applied cleanly.
+      const bounds = computeWorldBounds(meshes);
+      const cx = (bounds.min.x + bounds.max.x) / 2;
+      const cy = bounds.min.y;
+      const cz = (bounds.min.z + bounds.max.z) / 2;
+      root.position.addInPlace(new Vector3(-cx, -cy, -cz));
+
       this.instances.set(item.id, {
         root,
         meshes,
@@ -164,63 +182,25 @@ export class CosmeticModelLayer {
     }
   }
 
-  /**
-   * Auto-scale from the world bbox, then apply a kind-specific offset so
-   * the model is correctly positioned on the rig:
-   *  - dogs: feet rest on the board deck (catMount is ~0.66 above deck)
-   *  - boards: length along Z, centered under the dog
-   *  - hats: sit on the dog's head
-   */
-  private fitToTarget(
-    root: TransformNode,
-    meshes: readonly AbstractMesh[],
-    fit: CosmeticFit,
-    kind: "dog" | "board" | "hat"
-  ): void {
-    if (!meshes.length) return;
+  private instantiateDog(item: CosmeticItem): void {
+    this.instantiate(item, this.dogMount, DOG_SCALE, 0, DOG_POS_Y, 0, 0);
+  }
 
-    // Scale to target height/width
-    root.scaling.setAll(1);
-    root.position.set(0, 0, 0);
-    root.rotation.set(0, 0, 0);
+  private instantiateBoard(item: CosmeticItem): void {
+    this.instantiate(
+      item,
+      this.boardMount,
+      BOARD_SCALE,
+      0,
+      0,
+      0,
+      BOARD_ROT_Y
+    );
+  }
 
-    const bounds = computeWorldBounds(meshes);
-    const spanX = bounds.max.x - bounds.min.x;
-    const spanY = bounds.max.y - bounds.min.y;
-    const spanZ = bounds.max.z - bounds.min.z;
-    const targetHeight = fit.height;
-    const targetWidth = fit.width;
-
-    if (targetHeight && spanY > 0) {
-      root.scaling.setAll(targetHeight / spanY);
-    } else if (targetWidth && spanX > 0 && spanZ > 0) {
-      root.scaling.setAll(targetWidth / Math.max(spanX, spanZ));
-    }
-
-    // Boards: align the longest horizontal axis to the track direction (Z)
-    if (kind === "board" && spanX > spanZ) {
-      root.rotation.y = Math.PI / 2;
-    }
-
-    // Re-compute bounds after scaling + rotation
-    const fitted = computeWorldBounds(meshes);
-
-    // Center horizontally
-    root.position.x = -(fitted.min.x + fitted.max.x) / 2;
-    root.position.z = -(fitted.min.z + fitted.max.z) / 2;
-
-    // Vertical positioning depends on model kind
-    if (kind === "dog") {
-      // Dog feet at the board deck. The dogMount (catMount) is
-      // catFootOffset above the board, so offset the model down.
-      root.position.y = -fitted.min.y - CAT_FOOT_OFFSET;
-    } else if (kind === "hat") {
-      // Hat sits at the mount point (top of head)
-      root.position.y = -fitted.min.y;
-    } else {
-      // Board: center vertically
-      root.position.y = -(fitted.min.y + fitted.max.y) / 2;
-    }
+  private instantiateHat(item: CosmeticItem): void {
+    // Hats are usually tiny; scale to ~0.3m tall
+    this.instantiate(item, this.hatMount, 0.24, 0, 0, 0, 0);
   }
 }
 

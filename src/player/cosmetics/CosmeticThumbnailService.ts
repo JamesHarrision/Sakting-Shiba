@@ -34,7 +34,7 @@ export class CosmeticThumbnailService {
       preserveDrawingBuffer: true
     });
     const scene = new Scene(engine);
-    scene.clearColor = new Color4(0.06, 0.09, 0.13, 1);
+    scene.clearColor = new Color4(0.96, 0.96, 0.96, 1); // white studio background
 
     // Key light + subtle fill so no side of the model is fully black
     new HemisphericLight("th-ambient", new Vector3(0, 1, 0), scene).intensity = 0.5;
